@@ -5,128 +5,25 @@
 %import conv
 %import shared_cbm_textio_functions
 
-cbm {
-%option no_symbol_prefixing, ignore_unused
-
-    ubyte TIME_LO = $00
-
-; the alias was working but I broke it somehow.
-;alias CHROUT = txt.chrout
-asmsub CHROUT(ubyte character @ A) {
-    %asm {{
-        jmp txt.chrout
-    }}
-}
-asmsub GETIN() -> bool @Pc, ubyte @A {
-    %asm {{
-        rts
-    }}
-}
-}
-
 txt {
 %option no_symbol_prefixing, ignore_unused
 
-const ubyte DEFAULT_WIDTH = 80
-const ubyte DEFAULT_HEIGHT = 60
+    ;alias chrout = f256.chrout
+    asmsub chrout(ubyte character @A) {
+        %asm {{
+            jmp  f256.chrout
+        }}
+    }
 
-; self tracked screen coordinates
-; potentially could be at $04/$05 in reserved ZP area?
-ubyte screen_row = 0
-ubyte screen_col = 0
-ubyte screen_color = $f2    ; default text/background color
-&uword screen_ptr = $02 ; and $03.  used to calculate screen/color ram offsets
+    ; text screen size
+    const ubyte DEFAULT_WIDTH = f256.DEFAULT_WIDTH
+    const ubyte DEFAULT_HEIGHT = f256.DEFAULT_HEIGHT
 
-;
-; calculates screen memory pointer for the start of a row
-; in screen_ptr in zeropage.
-; ldy column
-; sta (screen_ptr), y
-;
-asmsub rowptr(ubyte row @Y) {
-    %asm {{
-        stz txt.screen_ptr      ; reset to start of screen ram
-        lda #>f256.Screen
-        sta txt.screen_ptr+1
-        cpy #0      ; row in @Y will be our loop counter
-        beq ptr_done
-rowloop:
-        clc
-        lda txt.screen_ptr      ; load count
-        adc #DEFAULT_WIDTH
-        bcc +
-        inc txt.screen_ptr+1
-+       sta txt.screen_ptr
-        dey
-        bne rowloop
-ptr_done:
-        rts
-    }}
-}
-
-;
-; calculates screen memory pointer for the specific col/row
-; in screen_ptr in zeropage. Points directly to character after.
-; ldy #0
-; sta (screen_ptr), y
-;
-asmsub chrptr(ubyte col @X, ubyte row @Y) clobbers(A) {
-    %asm {{
-        phx             ; preserve col
-        jsr  rowptr     ; calculate pointer to row
-        pla             ; restore col
-        clc
-        adc  screen_ptr
-        sta  screen_ptr 
-        bcc  +
-        inc  screen_ptr+1
-+       rts
-    }}
-}
-
-asmsub chrout(ubyte character @ A) {
-    %asm {{
-        phx                     ; preserve x
-        phy                     ; preserve y
-        cmp #$0d                ; check for carriage return
-        beq crlf
-        cmp #$0a                ; check for line feed
-        beq crlf
-        pha                     ; preserve a
-        ldy txt.screen_row
-        jsr rowptr              ; calculates screen pointer to start of row
-        ldy txt.screen_col      ; column will be our index against the row pointer
-        lda #2
-        sta f256.io_ctrl        ; map in screen memory
-        pla
-        sta (txt.screen_ptr),y
-        lda #3
-        sta f256.io_ctrl        ; map in color memory
-        lda screen_color
-        sta (txt.screen_ptr),y
-        lda #0
-        sta f256.io_ctrl        ; return to default map
-        inc txt.screen_col
-        lda txt.screen_col
-        cmp #DEFAULT_WIDTH
-        bcc +                   ; less than DEFAULT_WIDTH
-crlf:
-        stz txt.screen_col
-        inc txt.screen_row
-        lda txt.screen_row
-        cmp #DEFAULT_HEIGHT
-        bcc +
-        sec
-        jsr scroll_up
-        dec txt.screen_row
-+       ply
-        plx
-        rts
-    }}
-}
 
 sub  clear_screen() {
-    fill_screen(' ', screen_color)
+    fill_screen(' ', f256.screen_color)
+    f256.screen_col = 0
+    f256.screen_row = 0
 }
 
 sub  cls() {
@@ -134,17 +31,17 @@ sub  cls() {
 }
 
 sub home() {
-    screen_row = 0
-    screen_col = 0
+    f256.screen_row = 0
+    f256.screen_col = 0
 }
 
 sub nl() {
-    chrout($0d)
-    ;chrout($0a)
+    f256.chrout($0d)
+    ;f256.chrout($0a)
 }
 
 sub spc() {
-    chrout(' ')
+    f256.chrout(' ')
 }
 
 sub bell() {
@@ -160,7 +57,7 @@ sub bell() {
 asmsub column(ubyte col @A) clobbers(A, X, Y) {
     ; ---- set the cursor on the given column (starting with 0) on the current line
     %asm {{
-        sta screen_col
+        sta f256.screen_col
         rts
     }}
 }
@@ -168,7 +65,7 @@ asmsub column(ubyte col @A) clobbers(A, X, Y) {
 
 asmsub get_column() -> ubyte @Y {
     %asm {{
-        ldy screen_col
+        ldy f256.screen_col
         rts
     }}
 }
@@ -176,22 +73,22 @@ asmsub get_column() -> ubyte @Y {
 asmsub row(ubyte rownum @A) clobbers(A, X, Y) {
     ; ---- set the cursor on the given row (starting with 0) on the current line
     %asm {{
-        sta screen_row
+        sta f256.screen_row
         rts
     }}
 }
 
 asmsub get_row() -> ubyte @X {
     %asm {{
-        ldx screen_row
+        ldx f256.screen_row
         rts
     }}
 }
 
 asmsub get_cursor() -> ubyte @X, ubyte @Y {
     %asm {{
-        ldx screen_row
-        ldy screen_col
+        ldx f256.screen_row
+        ldy f256.screen_col
         rts
     }}
 }
@@ -285,7 +182,7 @@ asmsub  clear_screencolors (ubyte color @ A) clobbers(Y)  {
 }
 
 sub color (ubyte txtcol) {
-    screen_color = txtcol
+    f256.screen_color = txtcol
 }
 
 sub lowercase() {
@@ -369,52 +266,13 @@ _scroll_screen  ; scroll only the screen memory
     }}
 }
 
-asmsub  scroll_up  (bool alsocolors @ Pc) clobbers(A,X)  {
-    ; ---- scroll the whole screen 1 character up
-    ;      contents of the bottom row are unchanged, you should refill/clear this yourself
-    ;      Carry flag determines if screen color data must be scrolled too
-    %asm {{
-        bcc  _scroll_screen
-
-+               ; scroll the screen and the color memory
-        ldx #DEFAULT_WIDTH-1
--
-        lda #2
-        sta f256.io_ctrl        ; map in screen memory
-        .for row=1, row<=DEFAULT_HEIGHT, row+=1
-            lda  f256.Screen + DEFAULT_WIDTH*row,x
-            sta  f256.Screen + DEFAULT_WIDTH*(row-1),x
-        .next
-        lda #3
-        sta f256.io_ctrl        ; map in color memory
-        .for row=1, row<=DEFAULT_HEIGHT, row+=1
-            lda  f256.Colors + DEFAULT_WIDTH*row,x
-            sta  f256.Colors + DEFAULT_WIDTH*(row-1),x
-        .next
-
-
-        dex
-        bpl  -
-        lda #0
-        sta f256.io_ctrl        ; restore I/O configuration
-        rts
-
-_scroll_screen  ; scroll only the screen memory
-        ldx #DEFAULT_WIDTH-1
--
-        lda #2
-        sta f256.io_ctrl        ; map in screen memory
-        .for row=1, row<=DEFAULT_HEIGHT, row+=1
-            lda  f256.Screen + DEFAULT_WIDTH*row,x
-            sta  f256.Screen + DEFAULT_WIDTH*(row-1),x
-        .next
-        dex
-        bpl  -
-        lda #0
-        sta f256.io_ctrl        ; restore I/O configuration
-        rts
-    }}
-}
+; stub for call moved to the f256 block.
+alias scroll_up = f256.scroll_up
+;asmsub  scroll_up  (bool alsocolors @ Pc) clobbers(A,X)  {
+;    %asm {{
+;        jmp f256.scroll_up
+;    }}
+;}
 
 asmsub  scroll_down  (bool alsocolors @ Pc) clobbers(A,X)  {
     ; ---- scroll the whole screen 1 character down
@@ -454,14 +312,14 @@ asmsub  setchr  (ubyte col @X, ubyte row @Y, ubyte character @A) clobbers(A, Y) 
     ; ---- sets the character in the screen matrix at the given position
     %asm {{
         pha                     ; preserve character
-        jsr  chrptr             ; calculate offset
+        jsr  f256.chrptr             ; calculate offset
         pla                     ; restore character
         ldy  f256.io_ctrl       ; load current mapping
         phy                     ; save on stack
         ldy  #2
         sty  f256.io_ctrl       ; map in screen memory
         ldy  #0
-        sta  (screen_ptr), y    ; write character
+        sta  (f256.screen_ptr), y    ; write character
         ply
         sty  f256.io_ctrl       ; restore previous mapping
         rts
@@ -473,13 +331,13 @@ asmsub  getchr  (ubyte col @A, ubyte row @Y) clobbers(Y) -> ubyte @ A {
     %asm  {{
         phx                 ; preserve
         tax                 ; move column to X for call
-        jsr  chrptr         ; calculate offset to character
+        jsr  f256.chrptr         ; calculate offset to character
         ldy  f256.io_ctrl   ; load current mapping
         phy                 ; save on stack
         ldy  #2
         sty  f256.io_ctrl   ; map in screen memory
         ldy  #0
-        lda  (screen_ptr),y ; get character
+        lda  (f256.screen_ptr),y ; get character
         ply
         sty  f256.io_ctrl   ; restore previous mapping
         plx                 ; restore
@@ -491,14 +349,14 @@ asmsub  setclr  (ubyte col @X, ubyte row @Y, ubyte color @A) clobbers(A, Y)  {
     ; ---- set the color in A on the screen matrix at the given position
     %asm {{
         pha                     ; preserve character
-        jsr  chrptr             ; calculate offset
+        jsr  f256.chrptr             ; calculate offset
         pla                     ; restore character
         ldy  f256.io_ctrl       ; load current mapping
         phy                     ; save on stack
         ldy  #3
         sty  f256.io_ctrl       ; map in color memory
         ldy  #0
-        sta  (screen_ptr), y    ; write color
+        sta  (f256.screen_ptr), y    ; write color
         ply
         sty  f256.io_ctrl       ; restore previous mapping
         rts
@@ -510,13 +368,13 @@ asmsub  getclr  (ubyte col @A, ubyte row @Y) clobbers(Y) -> ubyte @ A {
     %asm  {{
         phx                 ; preserve
         tax                 ; move column to X for call
-        jsr  chrptr         ; calculate offset to character
+        jsr  f256.chrptr         ; calculate offset to character
         ldy  f256.io_ctrl   ; load current mapping
         phy                 ; save on stack
         ldy  #3
         sty  f256.io_ctrl   ; map in color memory
         ldy  #0
-        lda  (screen_ptr),y ; get color
+        lda  (f256.screen_ptr),y ; get color
         ply
         sty  f256.io_ctrl   ; restore previous mapping
         plx                 ; restore
@@ -529,19 +387,19 @@ sub  setcc  (ubyte col, ubyte row, ubyte character, ubyte charcolor)  {
     %asm {{
         ldx  col                ; setup parameters
         ldy  row
-        jsr  chrptr             ; calculate offset
+        jsr  f256.chrptr             ; calculate offset
         ldy  f256.io_ctrl       ; load current mapping
         phy                     ; save on stack
         ldy  #2
         sty  f256.io_ctrl       ; map in screen memory
         ldy  #0
         lda  character
-        sta  (screen_ptr), y
+        sta  (f256.screen_ptr), y
         ldy  #3
         sty  f256.io_ctrl       ; map in color memory
         ldy  #0
         lda  charcolor
-        sta  (screen_ptr), y
+        sta  (f256.screen_ptr), y
         ply                     ; previous mapping from stack
         sty  f256.io_ctrl       ; restore previous map
         rts
@@ -550,8 +408,8 @@ sub  setcc  (ubyte col, ubyte row, ubyte character, ubyte charcolor)  {
 
 asmsub  plot  (ubyte col @ Y, ubyte row @ X) {
     %asm  {{
-        sty  screen_col
-        stx  screen_row
+        sty  f256.screen_col
+        stx  f256.screen_row
         rts
     }}
 }
@@ -572,10 +430,16 @@ asmsub height() clobbers(X, Y) -> ubyte @A {
     }}
 }
 
+; TODO: jmp to cbm.CHRIN?
 asmsub waitkey() -> ubyte @A {
     %asm {{
--       jsr cbm.GETIN
-        beq -
+-       stz f256.event.type         ; invalidate existing event type
+        jsr f256.event.NextEvent
+        lda f256.event.type
+        cmp #f256.event.key.PRESSED
+        bne -
+        ;lda f256.event.key.raw ; return scan code?
+        lda f256.event.key.ascii    ; return upper or lower ASCII
         rts
     }}
 }
