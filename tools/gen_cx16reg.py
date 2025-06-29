@@ -6,72 +6,44 @@ import argparse
 def gen_reg(offset):
     print("; the sixteen virtual 16-bit registers in both normal unsigned mode and signed mode (s)")
     for i in range(16):
-        #print("i:", i)
-        if i < 10:
-            print(f"    &uword r{i}  = ${offset+i*2:04x}")
-        else:
-            print(f"    &uword r{i} = ${offset+i*2:04x}")
+        print(f"    &uword r{i:<2} = ${offset+i*2:04x}")
     print("")
 
 def gen_word(offset):
     print("    ; signed word versions")
     for i in range(16):
-        #print("i:", i)
-        if i < 10:
-            print(f"    &word r{i}s  = ${offset+i*2:04x}")
-        else:
-            print(f"    &word r{i}s = ${offset+i*2:04x}")
+        print(f"    &word r{f'{i}s':<3} = ${offset+i*2:04x}")
     print("")
 
 def gen_ubyte(offset):
     print("    ; ubyte versions (low and high bytes)")
     for i in range(16):
         #print("i:", i)
-        if i < 10:
-            print(f"    &ubyte r{i}L  = ${offset+i*2:04x}")
-        else:
-            print(f"    &ubyte r{i}L = ${offset+i*2:04x}")
+        print(f"    &ubyte r{f'{i}L':<3} = ${offset+i*2:04x}")
     print("")
     for i in range(16):
-        #print("i:", i)
-        if i < 10:
-            print(f"    &ubyte r{i}H  = ${offset+1+i*2:04x}")
-        else:
-            print(f"    &ubyte r{i}H = ${offset+1+i*2:04x}")
+        print(f"    &ubyte r{f'{i}H':<3} = ${offset+1+i*2:04x}")
     print("")
 
 def gen_byte(offset):
     print("    ; signed byte versions (low and high bytes)")
     for i in range(16):
-        #print("i:", i)
-        if i < 10:
-            print(f"    &byte r{i}sL  = ${offset+i*2:04x}")
-        else:
-            print(f"    &byte r{i}sL = ${offset+i*2:04x}")
+        print(f"    &byte r{f'{i}sL':<4} = ${offset+i*2:04x}")
     print("")
     for i in range(16):
         #print("i:", i)
-        if i < 10:
-            print(f"    &byte r{i}sH  = ${offset+1+i*2:04x}")
-        else:
-            print(f"    &byte r{i}sH = ${offset+1+i*2:04x}")
+        print(f"    &byte r{f'{i}sH':<4} = ${offset+1+i*2:04x}")
     print("")
 
 def gen_bool(offset):
     print("    ; boolean versions")
     for i in range(16):
         #print("i:", i)
-        if i < 10:
-            print(f"    &bool r{i}bL  = ${offset+i*2:04x}")
-        else:
-            print(f"    &bool r{i}bL = ${offset+i*2:04x}")
+        print(f"    &bool r{f'{i}bL':<4} = ${offset+i*2:04x}")
     print("")
     for i in range(16):
         #print("i:", i)
-        if i < 10:
-            print(f"    &bool r{i}bH  = ${offset+1+i*2:04x}")
-        else:
-            print(f"    &bool r{i}bH = ${offset+1+i*2:04x}")
+        print(f"    &bool r{f'{i}bH':<4} = ${offset+1+i*2:04x}")
     print("")
 
 
