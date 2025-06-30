@@ -1,0 +1,3 @@
+[RP6502]
+device = /dev/tty.usbmodem2101
+
