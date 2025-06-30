@@ -3,6 +3,7 @@ Various custom targets for Prog8.
 
 - F256 [Foenix F256](https://c256foenix.com/) 6502/65816 retro computer. Now [available](https://github.com/irmen/prog8/blob/master/examples/customtarget/targetconfigs/f256.properties) available in the main [Prog8](https://github.com/irmen/) repository.
 - rp6502 [Picocomputer 6502](https://picocomputer.github.io/)
+- SXB6 [WDC W65C816SXB SBC](https://wdc65xx.com/Single-Board-Computers/w65c816sxb/)
 
 
 ## Foenix F256
@@ -64,3 +65,23 @@ You can then copy the `hello.rp6502` to a USB flash drive and insert it in your 
 The `tools/rp6502.py` script can upload the file to the rp6502 file-system or just run it directly. `tools/rp6502.py -c .rp6502 run build/hello.rp6502`
 
 Note that the `rp6502.py` script may reset the rp6502 back to the `]` prompt when it closes the serial interface.  You may need to connect to the serial port and type `reset` or do that via the keyboard attached to the rp6502.
+
+## WDC W65C816SXB
+
+### Building / Running for W65C816SXB
+Use the `Makefile` (by running `make`) if you can and it will generate `build/hello_sxb6.bin` which you need to upload to your W65C816SXB via
+the USB "TIDE" port and the `tools/sxb6` script.
+
+To build manually you just need to specify the custom target file for `prog8c` to build the binary.
+
+```
+prog8c -target w65c816sxb.properties -out build/ -asmlist src/hello_sxb6.p8
+```
+
+You can then write ("upload") the file to ram on the W65C816SXB and run it using the `tools/sxb6` script. Check my [sxb repository](https://github.com/gillham/sxb) for more information about the script.
+
+```
+tools/sxb6 -d /dev/tty.usbserial-3 write 0x0200 build/hello_sxb6.bin
+tools/sxb6 -d /dev/tty.usbserial-3 exec 0x0200
+screen -L /dev/tty.usbserial-3 57600
+```
