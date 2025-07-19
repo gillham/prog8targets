@@ -1,0 +1,40 @@
+# configuration file for Prog8 on cx16os compilation target
+
+cpu = 65C02
+encoding = iso
+load_address = $a300
+memtop = $ffff
+bss_highram_start = $0
+bss_highram_end = $0
+bss_goldenram_start = $0
+bss_goldenram_end = $0
+
+# io_regions specifies memory-mapped I/O registers that should be treated differentely.
+# it can be zero or more memory address ranges (inclusive) separated by comma
+io_regions = 0,1,$9f00-$9fff
+
+# zeropage scratch variables. zp_scratch_reg must always be zp_scratch_b1+1 !
+zp_scratch_b1 = $30
+zp_scratch_reg = $31
+zp_scratch_w1 = $32
+zp_scratch_w2 = $34
+
+# free zeropage locations for the various zp usage methods
+# zero or more zeropage address ranges (inclusive).
+zp_fullsafe = $36-$4f
+zp_kernalsafe = $36-$4f
+zp_basicsafe =
+
+# the start of the 32 bytes used by the R0-R15 virtual registers. Can be in Zeropage or elsewhere.
+virtual_registers = $02
+
+# Where can we find the standard library (syslib.p8). You can still add more paths manually using -srcdirs
+library = ./libraries/cx16os
+
+# replace stock startup code
+custom_launcher_code = ; --- CX16OS ---\n\t.byte $ea, $ea\n\tjmp p8_sys_startup.init_system
+#custom_launcher_code = ; --- CX16OS ---\n\t.byte $ea, $ea\n\tjmp p8b_main.p8s_start
+
+# additional options passed to the assembler program
+assembler_options = --nostart
+
