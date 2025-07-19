@@ -139,7 +139,7 @@ prog8c -target config/vic20plus8.properties -out build/ -asmlist src/hello_vic20
 
 ## Commander X16 / OtterX running cx16os
 
-IF you install an 65C816 (or an (OtterX cpu switcher)[https://www.tindie.com/products/wavicle/65xx-cpu-switcher-for-otterx-and-x16/]) in your Commander X16 or OtterX, you can run cx16os.
+IF you install an 65C816 (or an [OtterX cpu switcher](https://www.tindie.com/products/wavicle/65xx-cpu-switcher-for-otterx-and-x16/)) in your Commander X16 or OtterX, you can run cx16os.
 
 With cx16os you get a terminal based multitasking os with some Unix like features.
 While cx16os requires a 65C816, the Prog8 compiler support is limited to the 65C02 emulation mode.
