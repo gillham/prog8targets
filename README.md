@@ -5,7 +5,7 @@ Various custom targets for Prog8.
 - rp6502 [Picocomputer 6502](https://picocomputer.github.io/)
 - SXB6 [WDC W65C816SXB SBC](https://wdc65xx.com/Single-Board-Computers/w65c816sxb/)
 - Commodore VIC-20 with [different memory maps](https://sleepingelephant.com/denial/wiki/index.php/Memory_Map).
-- Commander X16 or OtterX running [cx16os](https://github.com/cnelson20/cx16os) 
+- [Commander X16](https://www.commanderx16.com/) or [OtterX](https://www.tindie.com/products/wavicle/otterx-8-bit-retro-computer/) running [cx16os](https://github.com/cnelson20/cx16os) 
 
 
 ## Foenix F256
@@ -139,7 +139,7 @@ prog8c -target config/vic20plus8.properties -out build/ -asmlist src/hello_vic20
 
 ## Commander X16 / OtterX running cx16os
 
-IF you install an 65C816 (or an [OtterX cpu switcher](https://www.tindie.com/products/wavicle/65xx-cpu-switcher-for-otterx-and-x16/)) in your Commander X16 or OtterX, you can run cx16os.
+If you install an 65C816 (or an [OtterX cpu switcher](https://www.tindie.com/products/wavicle/65xx-cpu-switcher-for-otterx-and-x16/)) in your Commander X16 or OtterX, you can run cx16os.
 
 With cx16os you get a terminal based multitasking os with some Unix like features.
 While cx16os requires a 65C816, the Prog8 compiler support is limited to the 65C02 emulation mode.
