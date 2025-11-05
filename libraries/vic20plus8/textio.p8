@@ -145,7 +145,7 @@ asmsub  clear_screencolors (ubyte color @ A) clobbers(Y)  {
 }
 
 sub color (ubyte txtcol) {
-;    cbm.COLOR = txtcol
+    cbm.COLOR = txtcol
 }
 
 sub lowercase() {
@@ -318,7 +318,7 @@ asmsub  setchr  (ubyte col @X, ubyte row @Y, ubyte character @A) clobbers(A, Y) 
 _mod		sta  $ffff		; modified
 		rts
 
-_screenrows	.word  cbm.Screen + range(0, 1000, 40)
+_screenrows	.word  cbm.Screen + range(0, 506, 22)
         ; !notreached!
 	}}
 }
@@ -362,7 +362,7 @@ asmsub  setclr  (ubyte col @X, ubyte row @Y, ubyte color @A) clobbers(A, Y)  {
 _mod		sta  $ffff		; modified
 		rts
 
-_colorrows	.word  $d800 + range(0, 1000, 40)
+_colorrows	.word  cbm.Colors + range(0, 506, 22)
         ; !notreached!
 	}}
 }

@@ -51,8 +51,8 @@ cbm {
         &uword  IRQ_VEC         = $FFFE     ; 6502 interrupt vector, determined by the kernal if banked in
 
         ; the default addresses for the character screen chars and colors
-        const  uword  Screen    = $0400     ; to have this as an array[40*25] the compiler would have to support array size > 255
-        const  uword  Colors    = $d800     ; to have this as an array[40*25] the compiler would have to support array size > 255
+        const  uword  Screen    = $1000     ; to have this as an array[22*23] the compiler would have to support array size > 255
+        const  uword  Colors    = $9400     ; to have this as an array[22*23] the compiler would have to support array size > 255
 
 
 ; ---- CBM ROM kernal routines (VIC-20 addresses) ----
