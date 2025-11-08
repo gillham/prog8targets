@@ -4,7 +4,7 @@
 
 %import syslib
 %import conv
-%import shared_cbm_textio_functions
+%import shared_cbm_textio_functions2
 
 txt {
 
@@ -391,7 +391,7 @@ sub  setcc  (ubyte col, ubyte row, ubyte character, ubyte charcolor)  {
 		tay
 		lda  setchr._screenrows+1,y
 		sta  _charmod+2
-		adc  #$78
+		adc  #vic20.SCREEN_COLOR_OFFSET
 		sta  _colormod+2
 		lda  setchr._screenrows,y
 		clc
@@ -442,4 +442,41 @@ asmsub waitkey() -> ubyte @A {
         rts
     }}
 }
+
+    asmsub  input_chars  (^^ubyte buffer @ AY) clobbers(A) -> ubyte @ Y  {
+        ; ---- Input a string (max. 80 chars) from the keyboard, in PETSCII encoding.
+        ;      Returns length in Y. (string is terminated with a 0 byte as well)
+        ;      It assumes the keyboard is selected as I/O channel!
+
+        ;
+        ; VIC-20 hack to deal with long prompts wrapping and returning
+        ; the whole line, not the typed in values.
+        ;
+
+        %asm {{
+            sta  P8ZP_SCRATCH_W1
+            sty  P8ZP_SCRATCH_W1+1
+            lda  $d6                    ; load current physical line
+            pha                         ; save to stack
+            lda  $d3                    ; cursor position within logical line
+            cmp  #txt.DEFAULT_WIDTH*2   ; wrapping two extra lines?
+            bcc  +
+            dec  $d6                    ; otherwise reduce physical line
++           cmp  #txt.DEFAULT_WIDTH     ; screen width
+            bcc  +                      ; if logical less than physical width
+            dec  $d6                    ; otherwise reduce physical line
++           ldy  #0				; char counter = 0
+-           jsr  cbm.CHRIN
+            cmp  #$0d			; return (ascii 13) pressed?
+            beq  +				; yes, end.
+            sta  (P8ZP_SCRATCH_W1),y	; else store char in buffer
+            iny
+            bne  -
++           lda  #0
+            sta  (P8ZP_SCRATCH_W1),y	; finish string with 0 byte
+            pla                         ; restore physical line from stack
+            sta  $d6                    ; restore to zp
+            rts
+        }}
+    }
 }

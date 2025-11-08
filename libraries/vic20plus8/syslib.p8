@@ -57,14 +57,16 @@ cbm {
 
 ; ---- CBM ROM kernal routines (VIC-20 addresses) ----
 
-extsub $AB1E = STROUT(uword strptr @ AY) clobbers(A, X, Y)      ; print null-terminated string (use txt.print instead)
-extsub $E544 = CLEARSCR() clobbers(A,X,Y)                       ; clear the screen
-extsub $E566 = HOMECRSR() clobbers(A,X,Y)                       ; cursor to top left of screen
-extsub $EA31 = IRQDFRT() clobbers(A,X,Y)                        ; default IRQ routine
-extsub $EA81 = IRQDFEND() clobbers(A,X,Y)                       ; default IRQ end/cleanup
-extsub $FF81 = CINT() clobbers(A,X,Y)                           ; (alias: SCINIT) initialize screen editor and video chip
-extsub $FF84 = IOINIT() clobbers(A, X)                          ; initialize I/O devices (CIA, SID, IRQ)
-extsub $FF87 = RAMTAS() clobbers(A,X,Y)                         ; initialize RAM, tape buffer, screen
+extsub $CB1E = STROUT(uword strptr @ AY) clobbers(A, X, Y)      ; print null-terminated string (use txt.print instead)
+extsub $E518 = CINT() clobbers(A,X,Y)                           ; (alias: SCINIT) initialize screen editor and video chip
+extsub $E55F = CLEARSCR() clobbers(A,X,Y)                       ; clear the screen
+extsub $E581 = HOMECRSR() clobbers(A,X,Y)                       ; cursor to top left of screen
+;extsub $EA31 = IRQDFRT() clobbers(A,X,Y)                        ; default IRQ routine
+;extsub $EA81 = IRQDFEND() clobbers(A,X,Y)                       ; default IRQ end/cleanup
+
+extsub $FD8D = RAMTAS() clobbers(A,X,Y)                         ; initialize RAM, tape buffer, screen
+extsub $FDF9 = IOINIT() clobbers(A, X)                          ; initialize I/O devices (CIA, SID, IRQ)
+
 extsub $FF8A = RESTOR() clobbers(A,X,Y)                         ; restore default I/O vectors
 extsub $FF8D = VECTOR(uword userptr @ XY, bool dir @ Pc) clobbers(A,Y)     ; read/set I/O vector table
 extsub $FF90 = SETMSG(ubyte value @ A)                          ; set Kernal message control flag
@@ -154,79 +156,29 @@ asmsub kbdbuf_clear() {
 }
 
 vic20 {
-        ; vic20 I/O registers (VIC, SID, CIA)
+        ; platform variables
+        ; difference between screen ram page ($1E) and color ram page ($96)
+        const ubyte SCREEN_COLOR_OFFSET = $84
 
-        ; the default locations of the 8 sprite pointers (store address of sprite / 64)
-        ; (depending on the VIC bank and screen ram address selection these can be shifted around though,
-        ; see the two routines after this for a dynamic way of determining the correct memory location)
-        &ubyte  SPRPTR0         = 2040
-        &ubyte  SPRPTR1         = 2041
-        &ubyte  SPRPTR2         = 2042
-        &ubyte  SPRPTR3         = 2043
-        &ubyte  SPRPTR4         = 2044
-        &ubyte  SPRPTR5         = 2045
-        &ubyte  SPRPTR6         = 2046
-        &ubyte  SPRPTR7         = 2047
-        &ubyte[8]  SPRPTR       = 2040      ; the 8 sprite pointers as an array.
+        ; vic20 I/O registers (VIC, VIA)
 
-
-; ---- VIC-II 6567/6569/856x registers ----
-
-        &ubyte  SP0X            = $d000
-        &ubyte  SP0Y            = $d001
-        &ubyte  SP1X            = $d002
-        &ubyte  SP1Y            = $d003
-        &ubyte  SP2X            = $d004
-        &ubyte  SP2Y            = $d005
-        &ubyte  SP3X            = $d006
-        &ubyte  SP3Y            = $d007
-        &ubyte  SP4X            = $d008
-        &ubyte  SP4Y            = $d009
-        &ubyte  SP5X            = $d00a
-        &ubyte  SP5Y            = $d00b
-        &ubyte  SP6X            = $d00c
-        &ubyte  SP6Y            = $d00d
-        &ubyte  SP7X            = $d00e
-        &ubyte  SP7Y            = $d00f
-        &ubyte[16]  SPXY        = $d000        ; the 8 sprite X and Y registers as an array.
-        &uword[8] @nosplit SPXYW  = $d000        ; the 8 sprite X and Y registers as a combined xy word array.
-
-        &ubyte  MSIGX           = $d010
-        &ubyte  SCROLY          = $d011
-        &ubyte  RASTER          = $d012
-        &ubyte  LPENX           = $d013
-        &ubyte  LPENY           = $d014
-        &ubyte  SPENA           = $d015
-        &ubyte  SCROLX          = $d016
-        &ubyte  YXPAND          = $d017
-        &ubyte  VMCSB           = $d018
-        &ubyte  VICIRQ          = $d019
-        &ubyte  IREQMASK        = $d01a
-        &ubyte  SPBGPR          = $d01b
-        &ubyte  SPMC            = $d01c
-        &ubyte  XXPAND          = $d01d
-        &ubyte  SPSPCL          = $d01e
-        &ubyte  SPBGCL          = $d01f
-
-        &ubyte  EXTCOL          = $d020        ; border color
-        &ubyte  BGCOL0          = $d021        ; screen color
-        &ubyte  BGCOL1          = $d022
-        &ubyte  BGCOL2          = $d023
-        &ubyte  BGCOL4          = $d024
-        &ubyte  SPMC0           = $d025
-        &ubyte  SPMC1           = $d026
-        &ubyte  SP0COL          = $d027
-        &ubyte  SP1COL          = $d028
-        &ubyte  SP2COL          = $d029
-        &ubyte  SP3COL          = $d02a
-        &ubyte  SP4COL          = $d02b
-        &ubyte  SP5COL          = $d02c
-        &ubyte  SP6COL          = $d02d
-        &ubyte  SP7COL          = $d02e
-        &ubyte[8]  SPCOL        = $d027
-
-
-; ---- end of VIC-II registers ----
+        ; ---- VIC 6560 registers ----
+        &ubyte  VICCR0          = $9000
+        &ubyte  VICCR1          = $9001
+        &ubyte  VICCR2          = $9002
+        &ubyte  VICCR3          = $9003
+        &ubyte  VICCR4          = $9004
+        &ubyte  VICCR5          = $9005
+        &ubyte  VICCR6          = $9006
+        &ubyte  VICCR7          = $9007
+        &ubyte  VICCR8          = $9008
+        &ubyte  VICCR9          = $9009
+        &ubyte  VICCRA          = $900a
+        &ubyte  VICCRB          = $900b
+        &ubyte  VICCRC          = $900c
+        &ubyte  VICCRD          = $900d
+        &ubyte  VICCRE          = $900e
+        &ubyte  VICCRF          = $900f
 
 ; ---- CIA 6526 1 & 2 registers ----
 
@@ -395,38 +347,24 @@ _jmpfar     jmp  $0000          ; modified
         }}
     }
 
-    sub get_vic_memory_base() -> uword {
-        ; one of the 4 possible banks. $0000/$4000/$8000/$c000.
-        vic20.CIA2DDRA |= %11
-        return ((vic20.CIA2PRA & 3) ^ 3) as uword << 14
-    }
+;    sub get_vic_memory_base() -> uword {
+;        ; one of the 4 possible banks. $0000/$4000/$8000/$c000.
+;        vic20.CIA2DDRA |= %11
+;        return ((vic20.CIA2PRA & 3) ^ 3) as uword << 14
+;    }
 
-    sub get_char_matrix_ptr() -> uword {
-        ; Usually the character screen matrix is at 1024-2039 (see above)
-        ; However the vic memory configuration can be altered and this moves these registers with it.
-        ; So this routine determines it dynamically from the VIC memory setup.
-        uword chars_matrix_offset = (vic20.VMCSB & $f0) as uword << 6
-        return get_vic_memory_base() + chars_matrix_offset
-    }
+;    sub get_char_matrix_ptr() -> uword {
+;        ; Usually the character screen matrix is at 1024-2039 (see above)
+;        ; However the vic memory configuration can be altered and this moves these registers with it.
+;        ; So this routine determines it dynamically from the VIC memory setup.
+;        uword chars_matrix_offset = (vic20.VMCSB & $f0) as uword << 6
+;        return get_vic_memory_base() + chars_matrix_offset
+;    }
 
-    sub get_bitmap_ptr() -> uword {
-        return get_vic_memory_base() + ((vic20.VMCSB & %00001000) as uword << 10)
-    }
+;    sub get_bitmap_ptr() -> uword {
+;        return get_vic_memory_base() + ((vic20.VMCSB & %00001000) as uword << 10)
+;    }
 
-    sub get_sprite_addr_ptrs() -> uword {
-        ; Usually the sprite address pointers are at addresses 2040-2047 (see above)
-        ; However the vic memory configuration can be altered and this moves these registers with it.
-        ; So this routine determines it dynamically from the VIC memory setup.
-        return get_char_matrix_ptr() + 1016
-    }
-
-    sub set_sprite_ptr(ubyte sprite_num, uword sprite_data_address) {
-        ; Sets the sprite data pointer to the given address.
-        ; Because it takes some time to calculate things based on the vic memory setup,
-        ; its only suitable if you're not continuously changing the data address.
-        ; Otherwise store the correct sprite data pointer location somewhere yourself and reuse it.
-        @(get_sprite_addr_ptrs() + sprite_num) = lsb(sprite_data_address / 64)
-    }
 }
 
 sys {
@@ -649,9 +587,9 @@ _loop       lda  P8ZP_SCRATCH_W1
         ; --- busy wait till the next vsync has occurred (approximately), without depending on custom irq handling.
         ;     note: a more accurate way to wait for vsync is to set up a vsync irq handler instead.
         %asm {{
--           bit  vic20.SCROLY
+-           bit  vic20.VICCR4
             bpl  -
--           bit  vic20.SCROLY
+-           bit  vic20.VICCR4
             bmi  -
             rts
         }}
@@ -1111,6 +1049,7 @@ cx16 {
     &bool r14bH = $1234
     &bool r15bH = $1236
 
+
     asmsub save_virtual_registers() clobbers(A,Y) {
 		; TODO: Romable
         %asm {{
@@ -1190,6 +1129,10 @@ asmsub  init_system()  {
         jsr  cbm.CHROUT     ; uppercase
         lda  #147
         jsr  cbm.CHROUT     ; clear screen
+        lda  #159
+        jsr  cbm.CHROUT     ; text color cyan
+        lda #%01101011      ; cyan border, blue background, not inverted
+        sta $900f           ; set colors
         cli
         rts
     }}
