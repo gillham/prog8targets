@@ -1,2 +1,4 @@
 # build directory
 build/
+# ctags files
+tags
