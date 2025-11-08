@@ -118,11 +118,9 @@ asmsub  clear_screenchars (ubyte character @ A) clobbers(Y)  {
 	; ---- clear the character screen with the given fill character (leaves colors)
 	;      (assumes screen matrix is at the default address)
 	%asm {{
-		ldy  #250
--		sta  cbm.Screen+250*0-1,y
-		sta  cbm.Screen+250*1-1,y
-		sta  cbm.Screen+250*2-1,y
-		sta  cbm.Screen+250*3-1,y
+		ldy  #253
+-		sta  cbm.Screen+253*0-1,y
+		sta  cbm.Screen+253*1-1,y
 		dey
 		bne  -
 		rts
@@ -133,11 +131,10 @@ asmsub  clear_screencolors (ubyte color @ A) clobbers(Y)  {
 	; ---- clear the character screen colors with the given color (leaves characters).
 	;      (assumes color matrix is at the default address)
 	%asm {{
-		ldy  #250
--		sta  cbm.Colors+250*0-1,y
-		sta  cbm.Colors+250*1-1,y
-		sta  cbm.Colors+250*2-1,y
-		sta  cbm.Colors+250*3-1,y
+                and  #%00000111         ; limit to 8 colors
+		ldy  #253
+-		sta  cbm.Colors+253*0-1,y
+		sta  cbm.Colors+253*1-1,y
 		dey
 		bne  -
 		rts
@@ -150,12 +147,10 @@ sub color (ubyte txtcol) {
 
 sub lowercase() {
     cbm.CHROUT(14)
-;    vic20.VMCSB |= 2
 }
 
 sub uppercase() {
     cbm.CHROUT(142)
-;    vic20.VMCSB &= ~2
 }
 
 asmsub  scroll_left  (bool alsocolors @ Pc) clobbers(A, X, Y)  {
@@ -168,13 +163,13 @@ asmsub  scroll_left  (bool alsocolors @ Pc) clobbers(A, X, Y)  {
 
 +               ; scroll the screen and the color memory
 		ldx  #0
-		ldy  #38
+		ldy  #20
 -
-        .for row=0, row<=24, row+=1
-            lda  cbm.Screen + 40*row + 1,x
-            sta  cbm.Screen + 40*row + 0,x
-            lda  cbm.Colors + 40*row + 1,x
-            sta  cbm.Colors + 40*row + 0,x
+        .for row=0, row<=22, row+=1
+            lda  cbm.Screen + 22*row + 1,x
+            sta  cbm.Screen + 22*row + 0,x
+            lda  cbm.Colors + 22*row + 1,x
+            sta  cbm.Colors + 22*row + 0,x
         .next
 		inx
 		dey
@@ -183,11 +178,11 @@ asmsub  scroll_left  (bool alsocolors @ Pc) clobbers(A, X, Y)  {
 
 _scroll_screen  ; scroll only the screen memory
 		ldx  #0
-		ldy  #38
+		ldy  #20
 -
-        .for row=0, row<=24, row+=1
-            lda  cbm.Screen + 40*row + 1,x
-            sta  cbm.Screen + 40*row + 0,x
+        .for row=0, row<=22, row+=1
+            lda  cbm.Screen + 22*row + 1,x
+            sta  cbm.Screen + 22*row + 0,x
         .next
 		inx
 		dey
@@ -205,24 +200,24 @@ asmsub  scroll_right  (bool alsocolors @ Pc) clobbers(A,X)  {
 		bcc  _scroll_screen
 
 +               ; scroll the screen and the color memory
-		ldx  #38
+		ldx  #20
 -
-        .for row=0, row<=24, row+=1
-            lda  cbm.Screen + 40*row + 0,x
-            sta  cbm.Screen + 40*row + 1,x
-            lda  cbm.Colors + 40*row + 0,x
-            sta  cbm.Colors + 40*row + 1,x
+        .for row=0, row<=22, row+=1
+            lda  cbm.Screen + 22*row + 0,x
+            sta  cbm.Screen + 22*row + 1,x
+            lda  cbm.Colors + 22*row + 0,x
+            sta  cbm.Colors + 22*row + 1,x
         .next
 		dex
 		bpl  -
 		rts
 
 _scroll_screen  ; scroll only the screen memory
-		ldx  #38
+		ldx  #20
 -
-        .for row=0, row<=24, row+=1
-            lda  cbm.Screen + 40*row + 0,x
-            sta  cbm.Screen + 40*row + 1,x
+        .for row=0, row<=22, row+=1
+            lda  cbm.Screen + 22*row + 0,x
+            sta  cbm.Screen + 22*row + 1,x
         .next
 		dex
 		bpl  -
@@ -239,24 +234,24 @@ asmsub  scroll_up  (bool alsocolors @ Pc) clobbers(A,X)  {
 		bcc  _scroll_screen
 
 +               ; scroll the screen and the color memory
-		ldx #39
+		ldx #21
 -
-        .for row=1, row<=24, row+=1
-            lda  cbm.Screen + 40*row,x
-            sta  cbm.Screen + 40*(row-1),x
-            lda  cbm.Colors + 40*row,x
-            sta  cbm.Colors + 40*(row-1),x
+        .for row=1, row<=22, row+=1
+            lda  cbm.Screen + 22*row,x
+            sta  cbm.Screen + 22*(row-1),x
+            lda  cbm.Colors + 22*row,x
+            sta  cbm.Colors + 22*(row-1),x
         .next
 		dex
 		bpl  -
 		rts
 
 _scroll_screen  ; scroll only the screen memory
-		ldx #39
+		ldx #21
 -
-        .for row=1, row<=24, row+=1
-            lda  cbm.Screen + 40*row,x
-            sta  cbm.Screen + 40*(row-1),x
+        .for row=1, row<=22, row+=1
+            lda  cbm.Screen + 22*row,x
+            sta  cbm.Screen + 22*(row-1),x
         .next
 		dex
 		bpl  -
@@ -273,24 +268,24 @@ asmsub  scroll_down  (bool alsocolors @ Pc) clobbers(A,X)  {
 		bcc  _scroll_screen
 
 +               ; scroll the screen and the color memory
-		ldx #39
+		ldx #21
 -
-        .for row=23, row>=0, row-=1
-            lda  cbm.Colors + 40*row,x
-            sta  cbm.Colors + 40*(row+1),x
-            lda  cbm.Screen + 40*row,x
-            sta  cbm.Screen + 40*(row+1),x
+        .for row=21, row>=0, row-=1
+            lda  cbm.Colors + 22*row,x
+            sta  cbm.Colors + 22*(row+1),x
+            lda  cbm.Screen + 22*row,x
+            sta  cbm.Screen + 22*(row+1),x
         .next
 		dex
 		bpl  -
 		rts
 
 _scroll_screen  ; scroll only the screen memory
-		ldx #39
+		ldx #21
 -
-        .for row=23, row>=0, row-=1
-            lda  cbm.Screen + 40*row,x
-            sta  cbm.Screen + 40*(row+1),x
+        .for row=21, row>=0, row-=1
+            lda  cbm.Screen + 22*row,x
+            sta  cbm.Screen + 22*(row+1),x
         .next
 		dex
 		bpl  -
@@ -359,6 +354,7 @@ asmsub  setclr  (ubyte col @X, ubyte row @Y, ubyte color @A) clobbers(A, Y)  {
 		bcc  +
 		inc  _mod+2
 +		pla
+                and  #%00000111         ; limit to 8 colors
 _mod		sta  $ffff		; modified
 		rts
 
@@ -395,7 +391,7 @@ sub  setcc  (ubyte col, ubyte row, ubyte character, ubyte charcolor)  {
 		tay
 		lda  setchr._screenrows+1,y
 		sta  _charmod+2
-		adc  #$d4
+		adc  #$78
 		sta  _colormod+2
 		lda  setchr._screenrows,y
 		clc
@@ -408,6 +404,7 @@ sub  setcc  (ubyte col, ubyte row, ubyte character, ubyte charcolor)  {
 +		lda  character
 _charmod	sta  $ffff		; modified
 		lda  charcolor
+                and  #%00000111         ; limit to 8 colors
 _colormod	sta  $ffff		; modified
 		rts
 	}}
