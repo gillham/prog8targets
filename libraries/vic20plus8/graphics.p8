@@ -1,9 +1,15 @@
-; Bitmap pixel graphics module for the VIC-20 in +3kB expansion mode
-; Does NOT work with unexpanded and only has $400-$1000 (3kB) for programs.
+; Bitmap pixel graphics module for the VIC-20 in +8kB expansion mode
+; Does NOT work with unexpanded and only has $400-$1000 (3kB) for programs on +3k.
+;
+; You will need to move the main program to $2000 or higher.
+; Change your main block like this:
+; main $2000 {
+; ...
+; }
 ;
 ; This uses custom character set "bitmap" mode to get 160x160 monochrome.
 ;
-; Leaves the unexpanded or +3kB screen ram at the default of $1e00 and moves character
+; Puts screen ram at $1e00 like the unexpanded or +3kB and moves character
 ; set ram to $1000.
 ;
 ; This allows 224 (8x16) custom characters between $1000 - $1e00, but only 200 are needed.
@@ -23,7 +29,7 @@ graphics {
     ; We use 200 (20 x 10) 8 x 16 characters. (3200 bytes of "bitmap" memory)
     const uword BITMAP_ADDRESS = $1000  ; custom character set RAM not "bitmap" per se.
     const uword CHARS_ADDRESS = $1e00   ; default screen memory
-    const uword COLOR_ADDRESS = $9600   ; default color memory
+    const uword COLOR_ADDRESS = $9600   ; default color memory (used on +8kB in bitmap mode!)
 
     sub enable_bitmap_mode() {
         ; enable bitmap screen, erase it and set colors to black/white.
