@@ -180,84 +180,43 @@ vic20 {
         &ubyte  VICCRE          = $900e
         &ubyte  VICCRF          = $900f
 
-; ---- CIA 6526 1 & 2 registers ----
+        ; ---- VIA 6522 1 & 2 registers ----
+        ; VIA 1
+        &ubyte  VIA1PB          = $9110     ; Port B I/O register
+        &ubyte  VIA1PA1         = $9111     ; Port A I/O register
+        &ubyte  VIA1DDRB        = $9112     ; Port B data direction register
+        &ubyte  VIA1DDRA        = $9113     ; Port A data direction register
+        &ubyte  VIA1T1CL        = $9114     ; Timer 1 least significant byte (LSB) of count
+        &ubyte  VIA1T1CH        = $9115     ; Timer 1 most significant byte (MSB) of count
+        &ubyte  VIA1T1LL        = $9116     ; Timer 1 low order (LSB) latch byte
+        &ubyte  VIA1T1LH        = $9117     ; Timer 1 high order (MSB) latch byte (VIA1T1HL)
+        &ubyte  VIA1T2CL        = $9118     ; Timer 2 low order (LSB) counter and LSB latch
+        &ubyte  VIA1T2CH        = $9119     ; Timer 2 high order (MSB) counter and MSB latch
+        &ubyte  VIA1SR          = $911A     ; Shift register for parallel/serial conversion
+        &ubyte  VIA1ACR         = $911B     ; Auxiliary control register
+        &ubyte  VIA1PCR         = $911C     ; Peripheral control register for handshaking
+        &ubyte  VIA1IFR         = $911D     ; Interrupt flag register (IFR)
+        &ubyte  VIA1IER         = $911E     ; Interrupt enable register (IER)
+        &ubyte  VIA1PA2         = $911F     ; Mirror of port A I/O minus CA1/CA2 control lines
+        ; VIA 2
+        &ubyte  VIA2PB          = $9120     ; Port B I/O register
+        &ubyte  VIA2PA1         = $9121     ; Port A I/O register
+        &ubyte  VIA2DDRB        = $9122     ; Port B data direction register
+        &ubyte  VIA2DDRA        = $9123     ; Port A data direction register
+        &ubyte  VIA2T1CL        = $9124     ; Timer 1 least significant byte (LSB) of count
+        &ubyte  VIA2T1CH        = $9125     ; Timer 1 most significant byte (MSB) of count
+        &ubyte  VIA2T1LL        = $9126     ; Timer 1 low order (LSB) latch byte
+        &ubyte  VIA2T1LH        = $9127     ; Timer 1 high order (MSB) latch byte (VIA2T1HL)
+        &ubyte  VIA2T2CL        = $9128     ; Timer 2 low order (LSB) counter and LSB latch
+        &ubyte  VIA2T2CH        = $9129     ; Timer 2 high order (MSB) counter and MSB latch
+        &ubyte  VIA2SR          = $912A     ; Shift register for parallel/serial conversion
+        &ubyte  VIA2ACR         = $912B     ; Auxiliary control register
+        &ubyte  VIA2PCR         = $912C     ; Peripheral control register for handshaking
+        &ubyte  VIA2IFR         = $912D     ; Interrupt flag register (IFR)
+        &ubyte  VIA2IER         = $912E     ; Interrupt enable register (IER)
+        &ubyte  VIA2PA2         = $912F     ; Mirror of port A I/O minus CA1/CA2 control lines
 
-        &ubyte  CIA1PRA         = $DC00        ; CIA 1 DRA, keyboard column drive (and joystick control port #2)
-        &ubyte  CIA1PRB         = $DC01        ; CIA 1 DRB, keyboard row port (and joystick control port #1)
-        &ubyte  CIA1DDRA        = $DC02        ; CIA 1 DDRA, keyboard column
-        &ubyte  CIA1DDRB        = $DC03        ; CIA 1 DDRB, keyboard row
-        &ubyte  CIA1TAL         = $DC04        ; CIA 1 timer A low byte
-        &ubyte  CIA1TAH         = $DC05        ; CIA 1 timer A high byte
-        &ubyte  CIA1TBL         = $DC06        ; CIA 1 timer B low byte
-        &ubyte  CIA1TBH         = $DC07        ; CIA 1 timer B high byte
-        &ubyte  CIA1TOD10       = $DC08        ; time of day, 1/10 sec.
-        &ubyte  CIA1TODSEC      = $DC09        ; time of day, seconds
-        &ubyte  CIA1TODMMIN     = $DC0A        ; time of day, minutes
-        &ubyte  CIA1TODHR       = $DC0B        ; time of day, hours
-        &ubyte  CIA1SDR         = $DC0C        ; Serial Data Register
-        &ubyte  CIA1ICR         = $DC0D
-        &ubyte  CIA1CRA         = $DC0E
-        &ubyte  CIA1CRB         = $DC0F
-
-        &ubyte  CIA2PRA         = $DD00        ; CIA 2 DRA, serial port and video address
-        &ubyte  CIA2PRB         = $DD01        ; CIA 2 DRB, RS232 port / USERPORT
-        &ubyte  CIA2DDRA        = $DD02        ; CIA 2 DDRA, serial port and video address
-        &ubyte  CIA2DDRB        = $DD03        ; CIA 2 DDRB, RS232 port / USERPORT
-        &ubyte  CIA2TAL         = $DD04        ; CIA 2 timer A low byte
-        &ubyte  CIA2TAH         = $DD05        ; CIA 2 timer A high byte
-        &ubyte  CIA2TBL         = $DD06        ; CIA 2 timer B low byte
-        &ubyte  CIA2TBH         = $DD07        ; CIA 2 timer B high byte
-        &ubyte  CIA2TOD10       = $DD08        ; time of day, 1/10 sec.
-        &ubyte  CIA2TODSEC      = $DD09        ; time of day, seconds
-        &ubyte  CIA2TODMIN      = $DD0A        ; time of day, minutes
-        &ubyte  CIA2TODHR       = $DD0B        ; time of day, hours
-        &ubyte  CIA2SDR         = $DD0C        ; Serial Data Register
-        &ubyte  CIA2ICR         = $DD0D
-        &ubyte  CIA2CRA         = $DD0E
-        &ubyte  CIA2CRB         = $DD0F
-
-; ---- end of CIA registers ----
-
-; ---- SID 6581/8580 registers ----
-
-        &ubyte  FREQLO1         = $D400        ; channel 1 freq lo
-        &ubyte  FREQHI1         = $D401        ; channel 1 freq hi
-        &uword  FREQ1           = $D400        ; channel 1 freq (word)
-        &ubyte  PWLO1           = $D402        ; channel 1 pulse width lo (7-0)
-        &ubyte  PWHI1           = $D403        ; channel 1 pulse width hi (11-8)
-        &uword  PW1             = $D402        ; channel 1 pulse width (word)
-        &ubyte  CR1             = $D404        ; channel 1 voice control register
-        &ubyte  AD1             = $D405        ; channel 1 attack & decay
-        &ubyte  SR1             = $D406        ; channel 1 sustain & release
-        &ubyte  FREQLO2         = $D407        ; channel 2 freq lo
-        &ubyte  FREQHI2         = $D408        ; channel 2 freq hi
-        &uword  FREQ2           = $D407        ; channel 2 freq (word)
-        &ubyte  PWLO2           = $D409        ; channel 2 pulse width lo (7-0)
-        &ubyte  PWHI2           = $D40A        ; channel 2 pulse width hi (11-8)
-        &uword  PW2             = $D409        ; channel 2 pulse width (word)
-        &ubyte  CR2             = $D40B        ; channel 2 voice control register
-        &ubyte  AD2             = $D40C        ; channel 2 attack & decay
-        &ubyte  SR2             = $D40D        ; channel 2 sustain & release
-        &ubyte  FREQLO3         = $D40E        ; channel 3 freq lo
-        &ubyte  FREQHI3         = $D40F        ; channel 3 freq hi
-        &uword  FREQ3           = $D40E        ; channel 3 freq (word)
-        &ubyte  PWLO3           = $D410        ; channel 3 pulse width lo (7-0)
-        &ubyte  PWHI3           = $D411        ; channel 3 pulse width hi (11-8)
-        &uword  PW3             = $D410        ; channel 3 pulse width (word)
-        &ubyte  CR3             = $D412        ; channel 3 voice control register
-        &ubyte  AD3             = $D413        ; channel 3 attack & decay
-        &ubyte  SR3             = $D414        ; channel 3 sustain & release
-        &ubyte  FCLO            = $D415        ; filter cutoff lo (2-0)
-        &ubyte  FCHI            = $D416        ; filter cutoff hi (10-3)
-        &uword  FC              = $D415        ; filter cutoff (word)
-        &ubyte  RESFILT         = $D417        ; filter resonance and routing
-        &ubyte  MVOL            = $D418        ; filter mode and main volume control
-        &ubyte  POTX            = $D419        ; potentiometer X
-        &ubyte  POTY            = $D41A        ; potentiometer Y
-        &ubyte  OSC3            = $D41B        ; channel 3 oscillator value read
-        &ubyte  ENV3            = $D41C        ; channel 3 envelope value read
-
-; ---- end of SID registers ----
+        ; ---- end of VIA registers ----
 
 asmsub banks(ubyte banks @A) {
     ; -- set the memory bank configuration
