@@ -61,7 +61,7 @@ extsub $CB1E = STROUT(uword strptr @ AY) clobbers(A, X, Y)      ; print null-ter
 extsub $E518 = CINT() clobbers(A,X,Y)                           ; (alias: SCINIT) initialize screen editor and video chip
 extsub $E55F = CLEARSCR() clobbers(A,X,Y)                       ; clear the screen
 extsub $E581 = HOMECRSR() clobbers(A,X,Y)                       ; cursor to top left of screen
-;extsub $EA31 = IRQDFRT() clobbers(A,X,Y)                        ; default IRQ routine
+extsub $EABF = IRQDFRT() clobbers(A,X,Y)                        ; default IRQ routine
 ;extsub $EA81 = IRQDFEND() clobbers(A,X,Y)                       ; default IRQ end/cleanup
 
 extsub $FD8D = RAMTAS() clobbers(A,X,Y)                         ; initialize RAM, tape buffer, screen
@@ -419,9 +419,7 @@ _modified
 		pla
 		beq  +
 		jmp  cbm.IRQDFRT		; continue with normal kernal irq routine
-+		lda  #$ff
-		sta  vic20.VICIRQ			; acknowledge raster irq
-		lda  vic20.CIA1ICR		; acknowledge CIA1 interrupt
++		lda  vic20.VIA2T1CL		; acknowledge VIA2 timer interrupt
 		pla
 		tay
 		pla
@@ -438,67 +436,9 @@ asmsub  restore_irq() clobbers(A) {
 		sta  cbm.CINV
 		lda  #>cbm.IRQDFRT
 		sta  cbm.CINV+1
-		lda  #0
-		sta  vic20.IREQMASK	; disable raster irq
-		lda  #%10000001
-		sta  vic20.CIA1ICR	; restore CIA1 irq
+		lda  #%11000000
+		sta  vic20.VIA2IER	; restore VIA2 irq
 		cli
-		rts
-	}}
-}
-
-asmsub  set_rasterirq(uword handler @AY, uword rasterpos @R0) clobbers(A) {
-	%asm {{
-	    sei
-        sta  _modified+1
-        sty  _modified+2
-        lda  cx16.r0
-        ldy  cx16.r0+1
-        jsr  _setup_raster_irq
-        lda  #<_raster_irq_handler
-        sta  cbm.CINV
-        lda  #>_raster_irq_handler
-        sta  cbm.CINV+1
-        cli
-        rts
-
-_raster_irq_handler
-		jsr  sys.save_prog8_internals
-		cld
-_modified
-        jsr  $ffff              ; modified
-        pha
-        jsr  sys.restore_prog8_internals
-        lda  #$ff
-        sta  vic20.VICIRQ			; acknowledge raster irq
-        pla
-        beq  +
-		jmp  cbm.IRQDFRT                ; continue with kernal irq routine
-+		pla
-		tay
-		pla
-		tax
-		pla
-		rti
-
-_setup_raster_irq
-		pha
-		lda  #%01111111
-		sta  vic20.CIA1ICR    ; "switch off" interrupts signals from cia-1
-		sta  vic20.CIA2ICR    ; "switch off" interrupts signals from cia-2
-		and  vic20.SCROLY
-		sta  vic20.SCROLY     ; clear most significant bit of raster position
-		lda  vic20.CIA1ICR    ; ack previous irq
-		lda  vic20.CIA2ICR    ; ack previous irq
-		pla
-		sta  vic20.RASTER     ; set the raster line number where interrupt should occur
-		cpy  #0
-		beq  +
-		lda  vic20.SCROLY
-		ora  #%10000000
-		sta  vic20.SCROLY     ; set most significant bit of raster position
-+		lda  #%00000001
-		sta  vic20.IREQMASK   ; enable raster interrupt signals from vic
 		rts
 	}}
 }
