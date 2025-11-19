@@ -142,7 +142,8 @@ asmsub  clear_screencolors (ubyte color @ A) clobbers(Y)  {
 }
 
 sub color (ubyte txtcol) {
-    cbm.COLOR = txtcol
+    ; limit to 8 colors
+    cbm.COLOR = txtcol & %00000111
 }
 
 sub lowercase() {
