@@ -7,5 +7,5 @@ Also linked below:
 - [docs/README_w65c816sxb.md](docs/README_w65c816sxb.md) for [WDC W65C816SXB SBC](https://wdc65xx.com/Single-Board-Computers/w65c816sxb/)
 - [docs/README_vic20.md](docs/README_vic20.md) for Commodore VIC-20 with [different memory maps](https://sleepingelephant.com/denial/wiki/index.php/Memory_Map).
 - [docs/README_cx16os.md](docs/README_cx16os.md) for [cx16os](https://github.com/cnelson20/cx16os) running on [Commander X16](https://www.commanderx16.com/) or [OtterX](https://www.tindie.com/products/wavicle/otterx-8-bit-retro-computer/)
-
+- [docs/README_plus4.md](docs/README_plus4.md) for Commodore Plus/4, 16, and 116.  (aka 264 / TED machines)
 

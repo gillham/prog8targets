@@ -4,14 +4,14 @@ The Commodore VIC-20 has a somewhat complicated memory map with 3 different load
 
 Works:
 
- - Minimal textio output (txt.print*)
+ - Most of textio
  - Reading keypresses
+ - Disk or file I/O
+ - Graphics (160x160 via custom character set mode)
 
 Not working:
 
- - Disk or file I/O
- - Graphics
- - Sprites
+ - Sprites (no hardware sprites on this platform)
  - Sound
  - [everything else]
 

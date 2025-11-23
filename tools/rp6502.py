@@ -1,4 +1,4 @@
-#!/Users/gillham/.local/share/virtualenvs/default/bin/python
+#!/usr/bin/env python
 #
 # Copyright (c) 2023 Rumbledethumps
 #
