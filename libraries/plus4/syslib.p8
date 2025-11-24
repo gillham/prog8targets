@@ -549,7 +549,6 @@ _loop       lda  P8ZP_SCRATCH_W1
             beq  -
 -           lda  plus4.RSTL8    ; highest bit of raster line
             and  #%00000001
-            bit  plus4.SCROLY
             bne  -
             rts
         }}
@@ -848,6 +847,18 @@ _no_msb_size
         }}
     }
 
+    asmsub get_as_returnaddress(uword address @XY) -> uword @AX {
+        %asm {{
+            ; return the address like JSR would push onto the stack:  address-1,  MSB first then LSB
+            cpx  #0
+            bne  +
+            dey
++           dex
+            tya
+            rts
+        }}
+    }
+
     inline asmsub pop() -> ubyte @A {
         %asm {{
             pla
@@ -1088,6 +1099,15 @@ asmsub  init_system()  {
 
         ; do what PET does for now..
         sei
+        ldy  #6
+        lda  plus4.color_table,y
+        sta  plus4.LUMACHROMABRD
+        ldy  #7
+        lda  plus4.color_table,y
+        sta  cbm.COLOR
+        ldy  #0
+        lda  plus4.color_table,y
+        sta  plus4.LUMACHROMABK0
         lda  #142
         jsr  cbm.CHROUT     ; uppercase
         lda  #147

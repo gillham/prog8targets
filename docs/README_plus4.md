@@ -7,10 +7,10 @@ The current Prog8 custom target is known to work with the Plus/4 and Commodore 1
 Works:
  - Most of textio
  - Reading keypresses
+ - Disk or file I/O
 
 Not working:
  - ROM banking (and RAM/ROM switching)
- - Disk or file I/O
  - Graphics
  - Sprites (no hardware sprites on this platform)
  - Sound

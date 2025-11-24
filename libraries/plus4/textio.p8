@@ -127,6 +127,9 @@ asmsub  clear_screencolors (ubyte color @ A) clobbers(Y)  {
 	; ---- clear the character screen colors with the given color (leaves characters).
 	;      (assumes color matrix is at the default address)
 	%asm {{
+                tay
+                and  #%00001111
+                lda  plus4.color_table,y
 		ldy  #250
 -		sta  cbm.Colors+250*0-1,y
 		sta  cbm.Colors+250*1-1,y
@@ -426,7 +429,8 @@ sub  setcc  (ubyte col, ubyte row, ubyte character, ubyte charcolor)  {
 		tay
 		lda  setchr._screenrows+1,y
 		sta  _charmod+2
-		adc  #$d4
+                sec
+		sbc  #$04
 		sta  _colormod+2
 		lda  setchr._screenrows,y
 		clc
@@ -439,6 +443,9 @@ sub  setcc  (ubyte col, ubyte row, ubyte character, ubyte charcolor)  {
 +		lda  character
 _charmod	sta  $ffff		; modified
 		lda  charcolor
+                and  #%00001111
+                tay
+                lda  plus4.color_table,y
 _colormod	sta  $ffff		; modified
 		rts
 	}}
