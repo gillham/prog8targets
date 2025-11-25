@@ -416,11 +416,10 @@ _modified
         pha
 		jsr  sys.restore_prog8_internals
 		pla
-		beq  +
-		jmp  cbm.IRQDFRT		; continue with normal kernal irq routine
-+               nop
-;+		lda  plus4.TEDIRR               ; read interrupt request register
-		;sta  plus4.TEDIRR		; write the same value back to acknowledge interrupts
+		beq  +                  ; skip default IRQ handler
+		jmp  cbm.IRQDFRT	; continue with normal kernal irq routine
++		lda  plus4.TEDIRR       ; read interrupt status register
+		sta  plus4.TEDIRR       ; write same value to clear active interrupts
 		pla
 		tay
 		pla
@@ -437,11 +436,8 @@ asmsub  restore_irq() clobbers(A) {
 		sta  cbm.CINV
 		lda  #>cbm.IRQDFRT
 		sta  cbm.CINV+1
-; TODO: figure out correct setup.
-;		lda  #0
-;		sta  plus4.IREQMASK	; disable raster irq
-;		lda  #%10000001
-;		sta  plus4.CIA1ICR	; restore CIA1 irq
+		lda  #%00000010
+		sta  plus4.TEDIER 	; restore only raster irq
 		cli
 		rts
 	}}
