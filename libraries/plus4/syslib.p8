@@ -465,8 +465,8 @@ _modified
         jsr  $ffff              ; modified
         pha
         jsr  sys.restore_prog8_internals
-        lda  #$ff
-        sta  plus4.VICIRQ			; acknowledge raster irq
+        lda  #$02
+        sta  plus4.TEDIRR			; acknowledge raster irq
         pla
         beq  +
 		jmp  cbm.IRQDFRT                ; continue with kernal irq routine
@@ -479,22 +479,19 @@ _modified
 
 _setup_raster_irq
 		pha
-		lda  #%01111111
-		sta  plus4.CIA1ICR    ; "switch off" interrupts signals from cia-1
-		sta  plus4.CIA2ICR    ; "switch off" interrupts signals from cia-2
-		and  plus4.SCROLY
-		sta  plus4.SCROLY     ; clear most significant bit of raster position
-		lda  plus4.CIA1ICR    ; ack previous irq
-		lda  plus4.CIA2ICR    ; ack previous irq
+		lda  #%00000000
+		sta  plus4.TEDIER     ; Disable all irqs.  Clear high raster bit.
+		lda  #$02             ; ack previous irq
+		sta  plus4.TEDIRR     ; ack previous irq
 		pla
-		sta  plus4.RASTER     ; set the raster line number where interrupt should occur
+		sta  plus4.RSTCMP     ; set the raster line number where interrupt should occur
 		cpy  #0
 		beq  +
-		lda  plus4.SCROLY
-		ora  #%10000000
-		sta  plus4.SCROLY     ; set most significant bit of raster position
-+		lda  #%00000001
-		sta  plus4.IREQMASK   ; enable raster interrupt signals from vic
+		lda  plus4.TEDIRR
+		ora  #%00000001
+		sta  plus4.TEDIRR     ; set most significant bit of raster position
++		lda  #%00000010
+		sta  plus4.TEDIRR     ; enable raster interrupt signals
 		rts
 	}}
 }
