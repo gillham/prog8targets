@@ -10,7 +10,7 @@ txt {
 
     %option no_symbol_prefixing, ignore_unused
 
-const ubyte DEFAULT_WIDTH = 40
+const ubyte DEFAULT_WIDTH = 80
 const ubyte DEFAULT_HEIGHT = 25
 
 extsub $FFD2 = chrout(ubyte character @ A)    ; for consistency. You can also use cbm.CHROUT directly ofcourse. Note: takes a PETSCII encoded character.
@@ -104,6 +104,10 @@ asmsub  clear_screenchars (ubyte character @ A) clobbers(Y)  {
 		sta  cbm.Screen+250*1-1,y
 		sta  cbm.Screen+250*2-1,y
 		sta  cbm.Screen+250*3-1,y
+		sta  cbm.Screen+250*4-1,y
+		sta  cbm.Screen+250*5-1,y
+		sta  cbm.Screen+250*6-1,y
+		sta  cbm.Screen+250*7-1,y
 		dey
 		bne  -
 		rts
@@ -114,13 +118,27 @@ asmsub  clear_screencolors (ubyte color @ A) clobbers(Y)  {
 	; ---- clear the character screen colors with the given color (leaves characters).
 	;      (assumes color matrix is at the default address)
 	%asm {{
+                pha
+                ; enable cram2k
+                lda  mega65.CRAM2K
+                ora  #%00000001
+                sta  mega65.CRAM2K
+                pla
 		ldy  #250
 -		sta  cbm.Colors+250*0-1,y
 		sta  cbm.Colors+250*1-1,y
 		sta  cbm.Colors+250*2-1,y
 		sta  cbm.Colors+250*3-1,y
+		sta  cbm.Colors+250*4-1,y
+		sta  cbm.Colors+250*5-1,y
+		sta  cbm.Colors+250*6-1,y
+		sta  cbm.Colors+250*7-1,y
 		dey
 		bne  -
+                ; disable cram2k
+                lda  mega65.CRAM2K
+                and  #%11111110
+                sta  mega65.CRAM2K
 		rts
         }}
 }
