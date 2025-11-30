@@ -178,8 +178,10 @@ asmsub kbdbuf_clear() {
 
 mega65 {
         const ubyte PROG8_MEGA65_BANK_CONFIG=30
+
         ; Mega65 I/O registers
         &ubyte  CRAM2K          = $D030     ; enable 2K color ram
+        &ubyte  VIDMODE         = $D031     ; bit7=40/80 toggle
 
         ; the default locations of the 8 sprite pointers (store address of sprite / 64)
         ; (depending on the VIC bank and screen ram address selection these can be shifted around though,

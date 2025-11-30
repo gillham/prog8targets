@@ -302,7 +302,13 @@ asmsub  setchr  (ubyte col @X, ubyte row @Y, ubyte character @A) clobbers(A, Y) 
 	; ---- sets the character in the screen matrix at the given position
 	%asm {{
 		pha
-		tya
+                lda  mega65.VIDMODE     ; load VIC register
+                and  #%10000000         ; Look only at the H640 40/80 flag
+                beq +
+                tya
+                asl  a
+                tay
++		tya
 		asl  a
 		tay
 		lda  _screenrows+1,y
@@ -318,7 +324,7 @@ asmsub  setchr  (ubyte col @X, ubyte row @Y, ubyte character @A) clobbers(A, Y) 
 		sta  (P8ZP_SCRATCH_W1),y
 		rts
 
-_screenrows	.word  cbm.Screen + range(0, 2000, 80)
+_screenrows	.word  cbm.Screen + range(0, 2000, 40)
         ; !notreached!
 	}}
 }
@@ -327,7 +333,13 @@ asmsub  getchr  (ubyte col @A, ubyte row @Y) clobbers(Y) -> ubyte @ A {
 	; ---- get the character in the screen matrix at the given location
 	%asm  {{
 		pha
-		tya
+                lda  mega65.VIDMODE     ; load VIC register
+                and  #%10000000         ; Look only at the H640 40/80 flag
+                beq +
+                tya
+                asl  a
+                tay
++		tya
 		asl  a
 		tay
 		lda  setchr._screenrows+1,y
@@ -352,7 +364,13 @@ asmsub  setclr  (ubyte col @X, ubyte row @Y, ubyte color @A) clobbers(A, Y)  {
                 lda  mega65.CRAM2K
                 ora  #%00000001
                 sta  mega65.CRAM2K
-		tya
+                lda  mega65.VIDMODE     ; load VIC register
+                and  #%10000000         ; Look only at the H640 40/80 flag
+                beq +
+                tya
+                asl  a
+                tay
++		tya
 		asl  a
 		tay
 		lda  _colorrows+1,y
@@ -372,7 +390,7 @@ asmsub  setclr  (ubyte col @X, ubyte row @Y, ubyte color @A) clobbers(A, Y)  {
                 sta  mega65.CRAM2K
 		rts
 
-_colorrows	.word  cbm.Colors + range(0, 2000, 80)
+_colorrows	.word  cbm.Colors + range(0, 2000, 40)
         ; !notreached!
 	}}
 }
@@ -385,7 +403,13 @@ asmsub  getclr  (ubyte col @A, ubyte row @Y) clobbers(Y) -> ubyte @ A {
                 lda  mega65.CRAM2K
                 ora  #%00000001
                 sta  mega65.CRAM2K
-		tya
+                lda  mega65.VIDMODE     ; load VIC register
+                and  #%10000000         ; Look only at the H640 40/80 flag
+                beq +
+                tya
+                asl  a
+                tay
++		tya
 		asl  a
 		tay
 		lda  setclr._colorrows+1,y
@@ -416,7 +440,13 @@ _colorptr = P8ZP_SCRATCH_W2
 		lda  row
 		asl  a
 		tay
-		lda  setchr._screenrows+1,y
+                lda  mega65.VIDMODE     ; load VIC register
+                and  #%10000000         ; Look only at the H640 40/80 flag
+                beq  +
+                tya
+                asl  a
+                tay
++		lda  setchr._screenrows+1,y
 		sta  _charptr+1
 		adc  #$d0
 		sta  _colorptr+1
