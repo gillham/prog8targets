@@ -146,6 +146,29 @@ asmsub RDTIM16() clobbers(X) -> uword @AY {
     }}
 }
 
+asmsub SETTIML(long jiffies @R0R1_32) {
+    ; -- just like SETTIM, but with a single 32 bit (lower 24 bits used) argument.
+    %asm {{
+        lda  cx16.r0
+        ldx  cx16.r0+1
+        ldy  cx16.r0+2
+        jmp  SETTIM
+    }}
+}
+
+asmsub RDTIML() clobbers(X) -> long @R0R1_32 {
+    ; --  like RDTIM() and returning the timer value as a 32 bit (lower 24 bits used) value.
+    %asm {{
+        jsr  RDTIM
+        sta  cx16.r0
+        stx  cx16.r0+1
+        sty  cx16.r0+2
+        lda  #0
+        sta  cx16.r0+3
+        rts
+    }}
+}
+
 sub CLEARST() {
     ; -- Set the ST status variable back to 0. (there's no direct kernal call for this)
     ;    Note: a drive error state (blinking led) isn't cleared! You can use diskio.status() to clear that.
@@ -278,10 +301,10 @@ inline asmsub getbanks() -> ubyte @A {
             ; retrieve arguments
             ldy  #$01
             lda  (P8ZP_SCRATCH_W1),y            ; grab low byte of target address
-            sta  _jmpfar+1
+            sta  _jmpfar_vec
             iny
             lda  (P8ZP_SCRATCH_W1),y            ; now the high byte
-            sta  _jmpfar+2
+            sta  _jmpfar_vec+1
             iny
             lda  (P8ZP_SCRATCH_W1),y            ; then the target bank
             sta  P8ZP_SCRATCH_B1
@@ -306,7 +329,7 @@ inline asmsub getbanks() -> ubyte @A {
             lda  P8ZP_SCRATCH_W2
             ldy  P8ZP_SCRATCH_W2+1
             plp
-            jsr  _jmpfar        ; do the actual call
+            jsr  _jsrfar        ; do the actual call
             ; restore bank without clobbering status flags and A register
             sta  P8ZP_SCRATCH_W1
             php
@@ -319,8 +342,13 @@ inline asmsub getbanks() -> ubyte @A {
             lda  P8ZP_SCRATCH_W1
             plp
             rts
+_jsrfar     jmp  (_jmpfar_vec)
 
-_jmpfar     jmp  $0000          ; modified
+            .section BSS
+_jmpfar_vec .word ?
+            .send BSS
+
+            ; !notreached!
         }}
     }
 }
@@ -371,10 +399,12 @@ sys {
             lda  P8ZP_SCRATCH_W2+1
             sta  save_SCRATCH_ZPWORD2+1
             rts
-save_SCRATCH_ZPB1	.byte  0
-save_SCRATCH_ZPREG	.byte  0
-save_SCRATCH_ZPWORD1	.word  0
-save_SCRATCH_ZPWORD2	.word  0
+            .section BSS
+save_SCRATCH_ZPB1	.byte  ?
+save_SCRATCH_ZPREG	.byte  ?
+save_SCRATCH_ZPWORD1	.word  ?
+save_SCRATCH_ZPWORD2	.word  ?
+            .send BSS
             ; !notreached!
         }}
     }
@@ -399,20 +429,21 @@ save_SCRATCH_ZPWORD2	.word  0
 
 asmsub  set_irq(uword handler @AY) clobbers(A)  {
 	%asm {{
+	    php
 	    sei
-        sta  _modified+1
-        sty  _modified+2
+        sta  _vector
+        sty  _vector+1
 		lda  #<_irq_handler
 		sta  cbm.CINV
 		lda  #>_irq_handler
 		sta  cbm.CINV+1
-		cli
+		plp
 		rts
 _irq_handler
         jsr  sys.save_prog8_internals
         cld
-_modified
-        jsr  $ffff                      ; modified
+
+        jsr  _run_custom
         pha
 		jsr  sys.restore_prog8_internals
 		pla
@@ -426,11 +457,19 @@ _modified
 		tax
 		pla
 		rti
+
+_run_custom
+		jmp  (_vector)
+		.section BSS
+_vector	.word ?
+		.send BSS
+        ; !notreached!
     }}
 }
 
 asmsub  restore_irq() clobbers(A) {
 	%asm {{
+	    php
 		sei
 		lda  #<cbm.IRQDFRT
 		sta  cbm.CINV
@@ -438,31 +477,35 @@ asmsub  restore_irq() clobbers(A) {
 		sta  cbm.CINV+1
 		lda  #%00000010
 		sta  plus4.TEDIER 	; restore only raster irq
-		cli
+		plp
 		rts
 	}}
 }
 
 asmsub  set_rasterirq(uword handler @AY, uword rasterpos @R0) clobbers(A) {
 	%asm {{
+	    php
 	    sei
-        sta  _modified+1
-        sty  _modified+2
+        sta  user_vector
+        sty  user_vector+1
         lda  cx16.r0
         ldy  cx16.r0+1
-        jsr  _setup_raster_irq
+		jsr  sys.set_rasterline
+ 		;lda  #%00000001
+		;sta  c64.IREQMASK   ; enable raster interrupt signals from vic
+
         lda  #<_raster_irq_handler
         sta  cbm.CINV
         lda  #>_raster_irq_handler
         sta  cbm.CINV+1
-        cli
+        plp
         rts
 
 _raster_irq_handler
 		jsr  sys.save_prog8_internals
 		cld
-_modified
-        jsr  $ffff              ; modified
+
+        jsr  _run_custom
         pha
         jsr  sys.restore_prog8_internals
         lda  #$02
@@ -477,23 +520,45 @@ _modified
 		pla
 		rti
 
-_setup_raster_irq
-		pha
-		lda  #%00000000
-		sta  plus4.TEDIER     ; Disable all irqs.  Clear high raster bit.
-		lda  #$02             ; ack previous irq
-		sta  plus4.TEDIRR     ; ack previous irq
-		pla
-		sta  plus4.RSTCMP     ; set the raster line number where interrupt should occur
-		cpy  #0
-		beq  +
-		lda  plus4.TEDIRR
-		ora  #%00000001
-		sta  plus4.TEDIRR     ; set most significant bit of raster position
-+		lda  #%00000010
-		sta  plus4.TEDIRR     ; enable raster interrupt signals
-		rts
+_run_custom
+		jmp  (user_vector)
+		.section BSS
+user_vector	.word ?
+		.send BSS
+
+		; !notreached!
 	}}
+}
+
+    asmsub update_rasterirq(uword handler @AY, uword rasterpos @R0) clobbers(A) {
+        ; -- just update the IRQ handler and raster line position for the raster IRQ
+        ;    this is much more efficient than calling set_rasterirq() again every time.
+        ;    (but you have to call that one initially at least once to setup the prog8 handler itself)
+        %asm {{
+            php
+            sei
+            sta  sys.set_rasterirq.user_vector
+            sty  sys.set_rasterirq.user_vector+1
+            lda  cx16.r0L
+            ldy  cx16.r0H
+            jsr  sys.set_rasterline
+            plp
+            rts
+        }}
+    }
+
+asmsub  set_rasterline(uword line @AY) {
+    ; -- only set a new raster line for the raster IRQ
+    %asm {{
+        sta  c64.RASTER     ; set the raster line number where interrupt should occur
+        lda  c64.SCROLY
+        and  #%01111111
+        cpy  #0
+        beq  +
+        ora  #%10000000
++       sta  c64.SCROLY     ; clear most significant bit of raster position
+        rts
+    }}
 }
 
 
@@ -557,7 +622,27 @@ _loop       lda  P8ZP_SCRATCH_W1
         }}
     }
 
-    asmsub internal_stringcopy(uword source @R0, uword target @AY) clobbers (A,Y) {
+    asmsub waitrasterline(uword line @AY) {
+        ; -- CPU busy wait until the given raster line is reached
+        %asm {{
+            cpy  #0
+            bne  _larger
+-           cmp  plus4.RASTER
+            bne  -
+            bit  plus4.SCROLY
+            bmi  -
+            rts
+_larger
+            cmp  plus4.RASTER
+            bne  _larger
+            bit  plus4.SCROLY
+            bpl  _larger
+            rts
+        }}
+    }
+
+
+    asmsub internal_stringcopy(str source @R0, str target @AY) clobbers (A,Y) {
         ; Called when the compiler wants to assign a string value to another string.
         %asm {{
 		sta  P8ZP_SCRATCH_W1
@@ -789,7 +874,7 @@ _no_msb_size
             sta  p8_sys_startup.cleanup_at_exit._exitcode
             lda  #0
             rol  a
-            sta  p8_sys_startup.cleanup_at_exit._exitcodeCarry
+            sta  p8_sys_startup.cleanup_at_exit._exitcarry
             stx  p8_sys_startup.cleanup_at_exit._exitcodeX
             sty  p8_sys_startup.cleanup_at_exit._exitcodeY
             ldx  prog8_lib.orig_stackpointer
@@ -865,6 +950,37 @@ _no_msb_size
             pla
         }}
     }
+
+    inline asmsub pushl(long value @R0R1_32) {
+        %asm {{
+            lda  cx16.r0
+            pha
+            lda  cx16.r0+1
+            pha
+            lda  cx16.r0+2
+            pha
+            lda  cx16.r0+3
+            pha
+        }}
+    }
+
+    inline asmsub popl() -> long @R0R1_32 {
+        %asm {{
+            pla
+            sta  cx16.r0+3
+            pla
+            sta  cx16.r0+2
+            pla
+            sta  cx16.r0+1
+            pla
+            sta  cx16.r0
+        }}
+    }
+
+    sub cpu_is_65816() -> bool {
+        ; Returns true when you have a 65816 cpu, false when it's a 6502.
+        return false
+    }
 }
 
 cx16 {
@@ -908,6 +1024,16 @@ cx16 {
     &word r13s = $034d
     &word r14s = $034f
     &word r15s = $0351
+
+    ; signed long versions
+    &long r0r1sl = $0333
+    &long r2r3sl = $0337
+    &long r4r5sl = $033b
+    &long r6r7sl = $033f
+    &long r8r9sl = $0343
+    &long r10r11sl = $0347
+    &long r12r13sl = $034b
+    &long r14r15sl = $034f
 
     ; ubyte versions (low and high bytes)
     &ubyte r0L  = $0333
@@ -1025,9 +1151,11 @@ cx16 {
             bpl  -
             rts
 
+            .section BSS
     _cx16_vreg_storage
-            .word 0,0,0,0,0,0,0,0
-            .word 0,0,0,0,0,0,0,0
+            .word ?,?,?,?,?,?,?,?
+            .word ?,?,?,?,?,?,?,?
+            .send BSS
             ; !notreached!
         }}
     }
@@ -1134,17 +1262,23 @@ asmsub  cleanup_at_exit() {
         jsr  cbm.MEMTOP         ; adjust MEMTOP down again
         jsr  cbm.CLRCHN		; reset i/o channels
         jsr  enable_runstop_and_charsetswitch
-        
-_exitcodeCarry = *+1
-        lda  #0
+;        lda  #0
+;        sta  650            ; disable keyrepeats
+        lda  _exitcarry
         lsr  a
-_exitcode = *+1
-        lda  #0        ; exit code possibly modified in exit()
-_exitcodeX = *+1
-        ldx  #0
-_exitcodeY = *+1
-        ldy  #0
+        lda  _exitcode
+        ldx  _exitcodeX
+        ldy  _exitcodeY
         rts
+
+        .section BSS
+_exitcarry  .byte ?
+_exitcode   .byte ?
+_exitcodeX  .byte ?
+_exitcodeY  .byte ?
+        .send BSS
+
+        ; !notreached!
     }}
 }
 
