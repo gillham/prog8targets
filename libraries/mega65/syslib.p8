@@ -1341,44 +1341,6 @@ asmsub  init_system()  {
     }}
 }
 
-asmsub  init_systemC64()  {
-    ; Initializes the machine to a sane starting state.
-    ; Called automatically by the loader program logic.
-    ; This means that the KERNAL and CHARGEN ROMs are banked in,
-    ; BASIC ROM is NOT banked in (so we have another 8Kb of RAM at our disposal),
-    ; the VIC, SID and CIA chips are reset, screen is cleared, and the default IRQ is set.
-    ; Also a different color scheme is chosen to identify ourselves a little.
-    ; Uppercase charset is activated.
-    %asm {{
-        sei
-        lda  #%00101111
-        sta  $00
-        lda  #%00100110   ; kernal and i/o banked in, basic off
-        sta  $01
-        jsr  cbm.IOINIT
-        jsr  cbm.RESTOR
-        jsr  cbm.CINT
-        lda  #6
-        sta  mega65.EXTCOL
-        lda  #7
-        sta  cbm.COLOR
-        lda  #0
-        sta  mega65.BGCOL0
-        jsr  disable_runstop_and_charsetswitch
-        lda  #PROG8_MEGA65_BANK_CONFIG     ; apply bank config
-        sta  $01
-        and  #1
-        bne  +
-        ; basic is not banked in, adjust MEMTOP
-        ldx  #<$d000
-        ldy  #>$d000
-        clc
-        jsr  cbm.MEMTOP
-+       cli
-        rts
-    }}
-}
-
 asmsub  init_system_phase2()  {
     %asm {{
         cld
@@ -1391,24 +1353,17 @@ asmsub  init_system_phase2()  {
 asmsub  cleanup_at_exit() {
     ; executed when the main subroutine does rts
     %asm {{
-        lda  #%00101111
-        sta  $00
-        lda  #31
-        sta  $01            ; bank the kernal and basic in
-        ldx  #<$a000
-        ldy  #>$a000
-        clc
+        .cpu "45gs02"
         ; switch back to base page 0
-        ;lda #$00
-        ;tab
-        jsr  cbm.MEMTOP     ; adjust MEMTOP down again
+        lda #$00
+        tab
         jsr  cbm.CLRCHN		; reset i/o channels
-        jsr  enable_runstop_and_charsetswitch
         lda  _exitcarry
         lsr  a
         lda  _exitcode
         ldx  _exitcodeX
         ldy  _exitcodeY
+        .cpu "6502"
         rts
 
         .section BSS
