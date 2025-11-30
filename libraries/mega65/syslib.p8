@@ -1156,6 +1156,16 @@ cx16 {
     &word r14s = $bffc
     &word r15s = $bffe
 
+    ; signed long versions
+    &long r0r1sl = $bfe0
+    &long r2r3sl = $bfe4
+    &long r4r5sl = $bfe8
+    &long r6r7sl = $bfec
+    &long r8r9sl = $bff0
+    &long r10r11sl = $bff4
+    &long r12r13sl = $bff8
+    &long r14r15sl = $bffc
+
     ; ubyte versions (low and high bytes)
     &ubyte r0L  = $bfe0
     &ubyte r1L  = $bfe2
