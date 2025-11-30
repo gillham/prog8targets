@@ -15,6 +15,12 @@ def gen_word(offset):
         print(f"    &word r{f'{i}s':<3} = ${offset+i*2:04x}")
     print("")
 
+def gen_long(offset):
+    print("    ; signed long versions")
+    for i in range(0,16,2):
+        print(f"    &long r{f'{i}r{i+1}sl':<3} = ${offset+i*2:04x}")
+    print("")
+
 def gen_ubyte(offset):
     print("    ; ubyte versions (low and high bytes)")
     for i in range(16):
@@ -56,6 +62,7 @@ def main():
     #print(start)
     gen_reg(start)
     gen_word(start)
+    gen_long(start)
     gen_ubyte(start)
     gen_byte(start)
     gen_bool(start)
