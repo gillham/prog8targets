@@ -56,10 +56,9 @@ cbm {
     }}
 }
 
-
-    asmsub GETINx() -> bool @Pc, ubyte @A {
+    inline asmsub GETIN2() -> ubyte @A {
         %asm {{
-            rts
+            jsr  cbm.GETIN
         }}
     }
 }
@@ -77,6 +76,9 @@ f256 {
     ; text screen size
     const ubyte DEFAULT_WIDTH = 80
     const ubyte DEFAULT_HEIGHT = 60
+    ubyte screen_mode = 0
+    ubyte screen_width = DEFAULT_WIDTH
+    ubyte screen_height = DEFAULT_HEIGHT
 
     ; screen / color memory
     const uword Colors  = $C000 ; IO page 2
@@ -87,93 +89,86 @@ f256 {
     ubyte screen_row = 0
     ubyte screen_col = 0
     ubyte screen_color = $f2    ; default text/background color
-    &uword screen_ptr = $02 ; and $03.  used to calculate screen/color ram offsets
-
-    ;
-    ; calculates screen memory pointer for the start of a row
-    ; in screen_ptr in zeropage.
-    ; ldy column
-    ; sta (screen_ptr), y
-    ;
-    asmsub rowptr(ubyte row @Y) {
-        %asm {{
-            stz screen_ptr      ; reset to start of screen ram
-            lda #>f256.Screen
-            sta screen_ptr+1
-            cpy #0      ; row in @Y will be our loop counter
-            beq ptr_done
-    rowloop:
-            clc
-            lda screen_ptr      ; load count
-            adc #DEFAULT_WIDTH
-            bcc +
-            inc screen_ptr+1
-    +       sta screen_ptr
-            dey
-            bne rowloop
-    ptr_done:
-            rts
-        }}
-    }
-
-    ;
-    ; calculates screen memory pointer for the specific col/row
-    ; in screen_ptr in zeropage. Points directly to character after.
-    ; ldy #0
-    ; sta (screen_ptr), y
-    ;
-    asmsub chrptr(ubyte col @X, ubyte row @Y) clobbers(A) {
-        %asm {{
-            phx             ; preserve col
-            jsr  rowptr     ; calculate pointer to row
-            pla             ; restore col
-            clc
-            adc  screen_ptr
-            sta  screen_ptr 
-            bcc  +
-            inc  screen_ptr+1
-    +       rts
-        }}
-    }
+    ubyte inverse_mode = 0      ; draw reverse text
 
     asmsub chrout(ubyte character @ A) {
         %asm {{
+_charptr = P8ZP_SCRATCH_W1
             phx                     ; preserve x
             phy                     ; preserve y
             cmp #$0d                ; check for carriage return
-            beq crlf
+            beq _crlf
             cmp #$0a                ; check for line feed
-            beq crlf
-            pha                     ; preserve a
-            ldy screen_row
-            jsr rowptr              ; calculates screen pointer to start of row
-            ldy screen_col      ; column will be our index against the row pointer
-            lda #2
-            sta f256.io_ctrl        ; map in screen memory
+            beq _crlf
+            tax                     ; stash character in X
+            ldy  screen_row         ; load our self-tracked row
+            lda  screen_width       ; load current width of screen
+            cmp  #40                ; check for 40 column mode
+            beq  +
+            tya
+            asl  a
+            tay
++           tya
+            asl  a
+            tay
+            lda  _rows+1,y
+            sta  _charptr+1
+            lda  _rows,y
+            clc
+            adc  screen_col
+            sta  _charptr
+            bcc  +
+            inc  _charptr+1
++           lda  f256.io_ctrl       ; save previous mapping
+            pha                     ; on the stack
+            lda  #2
+            sta  f256.io_ctrl       ; map in screen memory
+            txa                     ; get character back in A
+            ldy  #0
+            sta  (_charptr),y
+            lda  #3
+            sta  f256.io_ctrl       ; map in color memory
+            lda  inverse_mode       ; check for inverse/reverse color mode
+            beq  +                  ; 0=off, 1=on
+            ; swap color nibbles
+            lda  screen_color
+            asl
+            asl
+            asl
+            asl
+            sta  P8ZP_SCRATCH_B1    ; save low nibble as high nibble
+            lda  screen_color
+            clc
+            ror
+            ror
+            ror
+            ror
+            clc
+            adc  P8ZP_SCRATCH_B1
+            clc
+            bcc _clrstr
+            ; end swap color nibbles
++           lda  screen_color
+_clrstr     sta  (_charptr),y       ; char + color use same $C000 in diff pages
             pla
-            sta (screen_ptr),y
-            lda #3
-            sta f256.io_ctrl        ; map in color memory
-            lda screen_color
-            sta (screen_ptr),y
-            lda #0
-            sta f256.io_ctrl        ; return to default map
+            sta  f256.io_ctrl       ; restore previous mapping
             inc screen_col
             lda screen_col
-            cmp #DEFAULT_WIDTH
-            bcc +                   ; less than DEFAULT_WIDTH
-    crlf:
-            stz screen_col
+            cmp screen_width
+            bcc +                   ; less than current screen_width
+_crlf       stz screen_col
             inc screen_row
             lda screen_row
-            cmp #DEFAULT_HEIGHT
+            cmp screen_height
             bcc +
             sec
             jsr scroll_up
             dec screen_row
-    +       ply
++           ply
             plx
             rts
+_rows       .word  f256.Screen + range(0, 4800, 40)
+            ; !notreached!
         }}
     }
 
@@ -227,6 +222,9 @@ f256 {
         }}
     }
 
+    ; kernel functions
+    extsub $ff0c = Yield()
+
     ; args
     sub args() {
         &uword ext        = $00f8
@@ -234,6 +232,20 @@ f256 {
         &uword buf        = $00fb
         &ubyte buflen     = $00fd
         &uword ptr        = $00fe
+
+        sub events() {
+            &ubyte pending = $00f2
+
+        }
+
+        sub timer() {
+            const ubyte QUERY = 128
+            const ubyte FRAMES = 0
+            const ubyte SECONDS = 1
+            &ubyte units = $00f3
+            &ubyte absolute = $00f4
+            &ubyte cookie = $00f5
+        }
     }
 
     ; kernel event calls & event types
@@ -318,14 +330,20 @@ f256 {
             const uword UDP         = $4e ; $4f
         }
         sub timer() {
-            const uword EXPIRED     = $50 ; $51
+            const uword EXPIRED     = $52 ; $53
         }
         sub clock() {
-            const uword TICK        = $52 ; $53
+            const uword TICK        = $54 ; $55
         }
         sub irq() {
-            const uword IRQ         = $54 ; $55
+            const uword IRQ         = $56 ; $57
         }
+    }
+
+    sub Clock() {
+        extsub $ffdc = GetTime()
+        extsub $ffe0 = SetTime()
+        extsub $fff0 = SetTimer()
     }
 
     ; kernel display calls
@@ -340,7 +358,70 @@ f256 {
         const uword DrawColumn_ = $ffd8     ; Draw text/color buffers top-to-bottom
     }
 
+    ; match Commander X16 modes
+    ; 0 = 80x60
+    ; 1 = 80x30
+    ; 2 = 40x60
+    ; 3 = 40x30
+    ; Others are invalid
+    sub set_screen_mode(ubyte mode) {
+        ; double_y and double_x not set for 80x60
+        ; only double_y set for 80x30
+        ; only double_x for 40x60
+        ; double_y and double_x both set for 40x30
+        ubyte[4] double_bits = [0, 4, 2, 6]
+        ubyte save_bank = 0
+        ubyte temp = 0
 
+        ; save bank and set base I/O mode
+        save_bank = f256.MMU_IO_CTRL
+        f256.MMU_IO_CTRL = $00
+
+        ; set video bits
+        f256.VKY_MSTR_CTRL_0 = $01
+
+        ; limit to modes 0-3
+        screen_mode = mode & %00000011
+        when screen_mode {
+            0 -> {
+                screen_height = 60
+                screen_width = 80
+            }
+            1 -> {
+                screen_width = 80
+                screen_height = 30
+            }
+            2 -> {
+                screen_width = 40
+                screen_height = 60
+            }
+            3 -> {
+                screen_width = 40
+                screen_height = 30
+            }
+        }
+        temp = f256.VKY_MSTR_CTRL_1 & %11111001
+        temp |= double_bits[screen_mode]
+        f256.VKY_MSTR_CTRL_1 = temp
+
+        ; restore I/O mode
+        f256.MMU_IO_CTRL = save_bank
+    }
+
+    sub get_screen_mode() -> ubyte, ubyte, ubyte {
+        return screen_mode, screen_width, screen_height
+    }
+
+
+    ; registers
+    &ubyte  MMU_MEM_CTRL        = $0000     ; MMU Memory Control Register
+    &ubyte  MMU_IO_CTRL         = $0001     ; MMU I/O Control Register
+    &ubyte  VKY_MSTR_CTRL_0     = $d000     ; Vicky Master Control Register 0
+    &ubyte  VKY_MSTR_CTRL_1     = $d001     ; Vicky Master Control Register 1
+    &ubyte  VKY_BM0_CTRL        = $d100     ; Bitmap #0 Control Register
+    &ubyte  VKY_BM0_ADDR_L      = $d101     ; Bitmap #0 Address bits 7..0
+    &ubyte  VKY_BM0_ADDR_M      = $d102     ; Bitmap #0 Address bits 15..8
+    &ubyte  VKY_BM0_ADDR_H      = $d103     ; Bitmap #0 Address bits 17..16
 
     ;
     &uword  NMI_VEC   = $FFFA  ; 6502 nmi vector
