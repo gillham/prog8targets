@@ -18,12 +18,12 @@ extsub $FFD2 = chrout(ubyte character @ A)    ; for consistency. You can also us
 
 sub bell() {
     ; beep
-    mega65.MVOL = 11
-    mega65.AD1 = %00110111
-    mega65.SR1 = %00000000
-    mega65.FREQ1 = 8500
-    mega65.CR1 = %00010000
-    mega65.CR1 = %00010001
+    c64.MVOL = 11
+    c64.AD1 = %00110111
+    c64.SR1 = %00000000
+    c64.FREQ1 = 8500
+    c64.CR1 = %00010000
+    c64.CR1 = %00010001
 }
 
 asmsub column(ubyte col @A) clobbers(A, X, Y) {
@@ -120,9 +120,9 @@ asmsub  clear_screencolors (ubyte color @ A) clobbers(Y)  {
 	%asm {{
                 pha
                 ; enable cram2k
-                lda  mega65.CRAM2K
+                lda  c65.CRAM2K
                 ora  #%00000001
-                sta  mega65.CRAM2K
+                sta  c65.CRAM2K
                 pla
 		ldy  #250
 -		sta  cbm.Colors+250*0-1,y
@@ -136,9 +136,9 @@ asmsub  clear_screencolors (ubyte color @ A) clobbers(Y)  {
 		dey
 		bne  -
                 ; disable cram2k
-                lda  mega65.CRAM2K
+                lda  c65.CRAM2K
                 and  #%11111110
-                sta  mega65.CRAM2K
+                sta  c65.CRAM2K
 		rts
         }}
 }
@@ -150,11 +150,11 @@ sub color (ubyte txtcol) {
 }
 
 sub lowercase() {
-    mega65.VMCSB |= 2
+    c64.VMCSB |= 2
 }
 
 sub uppercase() {
-    mega65.VMCSB &= ~2
+    c64.VMCSB &= ~2
 }
 
 asmsub  scroll_left  (bool alsocolors @ Pc) clobbers(A, X, Y)  {
@@ -302,7 +302,7 @@ asmsub  setchr  (ubyte col @X, ubyte row @Y, ubyte character @A) clobbers(A, Y) 
 	; ---- sets the character in the screen matrix at the given position
 	%asm {{
 		pha
-                lda  mega65.VIDMODE     ; load VIC register
+                lda  c65.VIDMODE     ; load VIC register
                 and  #%10000000         ; Look only at the H640 40/80 flag
                 beq +
                 tya
@@ -333,7 +333,7 @@ asmsub  getchr  (ubyte col @A, ubyte row @Y) clobbers(Y) -> ubyte @ A {
 	; ---- get the character in the screen matrix at the given location
 	%asm  {{
 		pha
-                lda  mega65.VIDMODE     ; load VIC register
+                lda  c65.VIDMODE     ; load VIC register
                 and  #%10000000         ; Look only at the H640 40/80 flag
                 beq +
                 tya
@@ -361,10 +361,10 @@ asmsub  setclr  (ubyte col @X, ubyte row @Y, ubyte color @A) clobbers(A, Y)  {
 	%asm {{
 		pha
                 ; enable cram2k
-                lda  mega65.CRAM2K
+                lda  c65.CRAM2K
                 ora  #%00000001
-                sta  mega65.CRAM2K
-                lda  mega65.VIDMODE     ; load VIC register
+                sta  c65.CRAM2K
+                lda  c65.VIDMODE     ; load VIC register
                 and  #%10000000         ; Look only at the H640 40/80 flag
                 beq +
                 tya
@@ -385,9 +385,9 @@ asmsub  setclr  (ubyte col @X, ubyte row @Y, ubyte color @A) clobbers(A, Y)  {
 		ldy  #0
 		sta  (P8ZP_SCRATCH_W1),y
                 ; disable cram2k
-                lda  mega65.CRAM2K
+                lda  c65.CRAM2K
                 and  #%11111110
-                sta  mega65.CRAM2K
+                sta  c65.CRAM2K
 		rts
 
 _colorrows	.word  cbm.Colors + range(0, 2000, 40)
@@ -400,10 +400,10 @@ asmsub  getclr  (ubyte col @A, ubyte row @Y) clobbers(Y) -> ubyte @ A {
 	%asm  {{
 		pha
                 ; enable cram2k
-                lda  mega65.CRAM2K
+                lda  c65.CRAM2K
                 ora  #%00000001
-                sta  mega65.CRAM2K
-                lda  mega65.VIDMODE     ; load VIC register
+                sta  c65.CRAM2K
+                lda  c65.VIDMODE     ; load VIC register
                 and  #%10000000         ; Look only at the H640 40/80 flag
                 beq +
                 tya
@@ -424,9 +424,9 @@ asmsub  getclr  (ubyte col @A, ubyte row @Y) clobbers(Y) -> ubyte @ A {
         lda  (P8ZP_SCRATCH_W1),y
                 pha
                 ; disable cram2k
-                lda  mega65.CRAM2K
+                lda  c65.CRAM2K
                 and  #%11111110
-                sta  mega65.CRAM2K
+                sta  c65.CRAM2K
                 pla
 		rts
 	}}
@@ -440,7 +440,7 @@ _colorptr = P8ZP_SCRATCH_W2
 		lda  row
 		asl  a
 		tay
-                lda  mega65.VIDMODE     ; load VIC register
+                lda  c65.VIDMODE     ; load VIC register
                 and  #%10000000         ; Look only at the H640 40/80 flag
                 beq  +
                 tya
@@ -462,15 +462,15 @@ _colorptr = P8ZP_SCRATCH_W2
 		ldy  #0
 		sta  (_charptr),y
                 ; enable cram2k
-                lda  mega65.CRAM2K
+                lda  c65.CRAM2K
                 ora  #%00000001
-                sta  mega65.CRAM2K
+                sta  c65.CRAM2K
 		lda  charcolor
 		sta  (_colorptr),y
                 ; disable cram2k
-                lda  mega65.CRAM2K
+                lda  c65.CRAM2K
                 and  #%11111110
-                sta  mega65.CRAM2K
+                sta  c65.CRAM2K
 		rts
 	}}
 }

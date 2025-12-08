@@ -176,12 +176,8 @@ asmsub kbdbuf_clear() {
 
 }
 
-mega65 {
-        const ubyte PROG8_MEGA65_BANK_CONFIG=30
-
-        ; Mega65 I/O registers
-        &ubyte  CRAM2K          = $D030     ; enable 2K color ram
-        &ubyte  VIDMODE         = $D031     ; bit7=40/80 toggle
+c64 {
+;        const ubyte PROG8_C64_BANK_CONFIG=30
 
         ; the default locations of the 8 sprite pointers (store address of sprite / 64)
         ; (depending on the VIC bank and screen ram address selection these can be shifted around though,
@@ -251,6 +247,8 @@ mega65 {
         &ubyte  SP6COL          = $d02d
         &ubyte  SP7COL          = $d02e
         &ubyte[8]  SPCOL        = $d027
+
+        &ubyte  CLKRATE         = $d030        ; Processor clock rate control register (like C128)
 
 
 ; ---- end of VIC-II registers ----
@@ -430,20 +428,448 @@ _jmpfar_vec .word ?
 
     sub get_vic_memory_base() -> uword {
         ; one of the 4 possible banks. $0000/$4000/$8000/$c000.
-        mega65.CIA2DDRA |= %11
-        return ((mega65.CIA2PRA & 3) ^ 3) as uword << 14
+        c64.CIA2DDRA |= %11
+        return ((c64.CIA2PRA & 3) ^ 3) as uword << 14
     }
 
     sub get_char_matrix_ptr() -> uword {
         ; Usually the character screen matrix is at 1024-2039 (see above)
         ; However the vic memory configuration can be altered and this moves these registers with it.
         ; So this routine determines it dynamically from the VIC memory setup.
-        uword chars_matrix_offset = (mega65.VMCSB & $f0) as uword << 6
+        uword chars_matrix_offset = (c64.VMCSB & $f0) as uword << 6
         return get_vic_memory_base() + chars_matrix_offset
     }
 
     sub get_bitmap_ptr() -> uword {
-        return get_vic_memory_base() + ((mega65.VMCSB & %00001000) as uword << 10)
+        return get_vic_memory_base() + ((c64.VMCSB & %00001000) as uword << 10)
+    }
+
+    sub get_sprite_addr_ptrs() -> uword {
+        ; Usually the sprite address pointers are at addresses 2040-2047 (see above)
+        ; However the vic memory configuration can be altered and this moves these registers with it.
+        ; So this routine determines it dynamically from the VIC memory setup.
+        return get_char_matrix_ptr() + 1016
+    }
+
+    sub set_sprite_ptr(ubyte sprite_num, uword sprite_data_address) {
+        ; Sets the sprite data pointer to the given address.
+        ; Because it takes some time to calculate things based on the vic memory setup,
+        ; its only suitable if you're not continuously changing the data address.
+        ; Otherwise store the correct sprite data pointer location somewhere yourself and reuse it.
+        @(get_sprite_addr_ptrs() + sprite_num) = lsb(sprite_data_address / 64)
+    }
+}
+
+c65 {
+
+; ---- VIC-III / C65 registers ----
+
+        &ubyte  BORDERCOL       = $d020     ; border color
+        &ubyte  SCREENCOL       = $d021     ; screen color
+        &ubyte  MC1             = $d022
+        &ubyte  MC2             = $d023
+        &ubyte  MC3             = $d024
+        &ubyte  SPRMC0          = $d025
+        &ubyte  SPRMC1          = $d026
+        &ubyte  KEY             = $d02F     ; I/O personality configuration keyhole
+        &ubyte  CRAM2K          = $D030     ; enable 2K color ram
+        &ubyte  VIDMODE         = $D031     ; bit7=40/80 toggle
+
+        &ubyte  B0AD            = $D033
+        &ubyte  B1AD            = $D034
+        &ubyte  B2AD            = $D035
+        &ubyte  B3AD            = $D036
+        &ubyte  B4AD            = $D037
+        &ubyte  B5AD            = $D038
+        &ubyte  B6AD            = $D039
+        &ubyte  B7AD            = $D03A
+        &ubyte  BPCOMP          = $D03B
+        &ubyte  BPX             = $D03C
+        &ubyte  BPY             = $D03D
+        &ubyte  HPOS            = $D03E
+        &ubyte  VPOS            = $D03F
+        &ubyte  B0PIX           = $D040
+        &ubyte  B1PIX           = $D041
+        &ubyte  B2PIX           = $D042
+        &ubyte  B3PIX           = $D043
+        &ubyte  B4PIX           = $D044
+        &ubyte  B5PIX           = $D045
+        &ubyte  B6PIX           = $D046
+        &ubyte  B7PIX           = $D047
+
+        &ubyte  PALRED          = $D100
+        &ubyte  PALGREEN        = $D200
+        &ubyte  PALBLUE         = $D300
+
+; ---- end of VIC-III / C65 registers ----
+
+; ---- UART 6551 registers ----
+
+        &ubyte  UARTDATA        = $D600
+        &ubyte  UARTFLAG        = $D601
+        &ubyte  UARTCONFIG      = $D602
+        &ubyte  UARTDIVISOR0    = $D603
+        &ubyte  UARTDIVISOR1    = $D604
+        &ubyte  UARTIRQ0        = $D605
+        &ubyte  UARTIRQ1        = $D606
+
+; ---- end of UART registers ----
+
+}
+
+mega65 {
+        ; placeholder
+        const ubyte PROG8_MEGA65_BANK_CONFIG=30
+
+        ; I/O blocks
+        ; $D000-$D02F: VIC-II (in C64 block above)
+        ; $D030-$D07F: VIC-III
+        ; $D080-$D08F: F011 ??
+        ; $D090-$D09F: SD card
+        ; $D0A0-$D0FF: unused
+        ; $D100-$D1FF: RED Palette
+        ; $D200-$D2FF: GREEN Palette
+        ; $D300-$D3FF: BLUE Palette
+        ; $D400-$D41F: SID Right #1
+        ; $D420-$D43F: SID Right #2
+        ; $D440-$D45F: SID Left #1
+        ; $D460-$D47F: SID Left #2
+        ; $D480-$D49F: SID Right #3?
+        ; $D4A0-$D4BF: SID Right #4?
+        ; $D4C0-$D4DF: SID Left #3?
+        ; $D4E0-$D4FF: SID Left #4?
+        ; $D500-$D5FF: reserved
+        ; $D600-$D63F: UART
+        ; $D640-$D67F: HyperTrap Registers
+        ; $D680-$D6FF: MEGA65 Devices
+        ; $D700-$D7FF: MEGA65 Devices
+        ; $D800-$DBFF: Color / Colour RAM
+        ; $DC00-$DDFF: CIAs / Color / Colour RAM
+        ; $DE00-$DFFF: CART I/O / SD SECTOR
+
+; ---- VIC-IV / MEGA65 registers ----
+
+        &ubyte  BORDERCOL       = $d020     ; border color
+        &ubyte  SCREENCOL       = $d021     ; screen color
+        &ubyte  MC1             = $d022
+        &ubyte  MC2             = $d023
+        &ubyte  MC3             = $d024
+        &ubyte  SPRMC0          = $d025
+        &ubyte  SPRMC1          = $d026
+        &ubyte  KEY             = $d02F     ; I/O personality configuration keyhole
+
+        &ubyte  TBDRPOS         = $D048
+        &ubyte  TBDRPOSMSB      = $D049
+        &ubyte  BBDRPOS         = $D04A
+        &ubyte  BBDRPOSMSB      = $D04B
+        &ubyte  TEXTXPOS        = $D04C
+        &ubyte  TEXTXPOSMSB     = $D04D
+        &ubyte  TEXTYPOS        = $D04E
+        &ubyte  TEXTYPOSMSB     = $D04F
+        &ubyte  XPOSLSB         = $D050
+        &ubyte  XPOSMSB         = $D051
+        &ubyte  FNRASTERLSB     = $D052
+        &ubyte  FNRASTERMSB     = $D053
+        &ubyte  CHR16           = $D054
+        &ubyte  SPRHGTEN        = $D055
+        &ubyte  SPRHGHT         = $D056
+        &ubyte  SPRX64EN        = $D057
+        &ubyte  LINESTEPLSB     = $D058
+        &ubyte  LINESTEPMSB     = $D059
+        &ubyte  CHRXSCL         = $D05A
+        &ubyte  CHRYSCL         = $D05B
+        &ubyte  SDBDRWDLSB      = $D05C
+        &ubyte  SDBDRWDMSB      = $D05D
+        &ubyte  CHRCOUNT        = $D05E
+        &ubyte  SPRXSMSBS       = $D05F
+        &ubyte  SCRNPTRLSB      = $D060
+        &ubyte  SCRNPTRMSB      = $D061
+        &ubyte  SCRNPTRBNK      = $D062
+        &ubyte  SCRNPTRMB       = $D063
+        &ubyte  COLPTRLSB       = $D064
+        &ubyte  COLPTRMSB       = $D065
+        &ubyte  CHARPTRLSB      = $D068
+        &ubyte  CHARPTRMSB      = $D069
+        &ubyte  CHARPTRBNK      = $D06A
+        &ubyte  SPR16EN         = $D06B
+        &ubyte  SPRPTRADRLSB    = $D06C
+        &ubyte  SPRPTRADRMSB    = $D06D
+        &ubyte  SPRPTRBNK       = $D06E
+        &ubyte  RASLINE0        = $D06F
+        &ubyte  PALSEL          = $D070
+        &ubyte  BP16ENS         = $D071
+        &ubyte  SPRYADJ         = $D072
+        &ubyte  RASTERHEIGHT    = $D073
+        &ubyte  SPRENALPHA      = $D074
+        &ubyte  SPRALPHAVAL     = $D075
+        &ubyte  SPRENV400       = $D076
+        &ubyte  SPRYMSBS        = $D077
+        &ubyte  SPRYSMSBS       = $D078
+        &ubyte  RASCMP          = $D079
+        &ubyte  RASCMPMSB       = $D07A
+        &ubyte  DISPROWS        = $D07B
+        &ubyte  BITPBANK        = $D07C
+
+; ---- end of VIC-IV / MEGA65 registers ----
+
+; move to C65?
+; ---- F011 Floppy registers ----
+        &ubyte  FLPREG0         = $D080
+        &ubyte  FLPREG1         = $D081
+        &ubyte  FLPREG2         = $D082
+        &ubyte  FLPREG3         = $D083
+        &ubyte  FLPTRACK        = $D084
+        &ubyte  FLPSECTOR       = $D085
+        &ubyte  FLPSIDE         = $D086
+        &ubyte  FLPDATA         = $D087
+        &ubyte  FLPCLOCK        = $D088
+        &ubyte  FLPSTEP         = $D089
+        &ubyte  FLPPCODE        = $D08A
+
+; ---- end of Floppy registers ----
+
+; ---- 4551 GPIO registers ----
+
+        &ubyte  UFAST           = $D609
+        &ubyte  MODIFIERKEY     = $D60A
+        &ubyte  PORTF           = $D60B
+        &ubyte  PORTFDDR        = $D60C
+        &ubyte  SDCARD          = $D60D
+        &ubyte  BASHDDR         = $D60E
+        &ubyte  MISCKEY         = $D60F
+        &ubyte  ASCIIKEY        = $D610
+        &ubyte  MEGAKEY         = $D611
+        &ubyte  JOYSWAP         = $D612
+        &ubyte  VIRTKEY1        = $D615
+        &ubyte  VIRTKEY2        = $D616
+        &ubyte  VIRTKEY3        = $D617
+        &ubyte  KSCNRATE        = $D618
+        &ubyte  PETSCIIKEY      = $D619
+        &ubyte  SYSCTL          = $D61A
+        &ubyte  KEYLEDREG       = $D61D
+        &ubyte  KEYLEDVAL       = $D61E
+        &ubyte  POTAX           = $D620
+        &ubyte  POTAY           = $D621
+        &ubyte  POTBX           = $D622
+        &ubyte  POTBY           = $D623
+        &ubyte  J21L            = $D625
+        &ubyte  J21H            = $D626
+        &ubyte  J21LDDR         = $D627
+        &ubyte  J21HDDR         = $D628
+        &ubyte  M65MODEL        = $D629
+
+; ---- end of GPIO registers ----
+
+; ---- SID mode registers ----
+
+        &ubyte  SIDMODE         = $D63C
+
+; ---- end of SID mode registers ----
+
+; ---- 45IO27 registers ----
+
+        &ubyte  SDCMDANDSTAT    = $D680
+        &ubyte  SDSECTOR0       = $D681
+        &ubyte  SDSECTOR1       = $D682
+        &ubyte  SDSECTOR2       = $D683
+        &ubyte  SDSECTOR3       = $D684
+        &ubyte  SDFILLVAL       = $D686
+
+        &ubyte  IO27FLAGS0      = $D68A
+        &ubyte  IO27FLAGS1      = $D68B
+        &ubyte  D0STARTSEC0     = $D68C
+        &ubyte  D0STARTSEC1     = $D68D
+        &ubyte  D0STARTSEC2     = $D68E
+        &ubyte  D0STARTSEC3     = $D68F
+        &ubyte  D1STARTSEC0     = $D690
+        &ubyte  D1STARTSEC1     = $D691
+        &ubyte  D1STARTSEC2     = $D692
+        &ubyte  D1STARTSEC3     = $D693
+        &ubyte  IO27FLAGS2      = $D6A1
+        &ubyte  IO27FLAGS3      = $D6AE
+        &ubyte  IO27FLAGS4      = $D6AF
+
+        &ubyte  MIXREGSEL       = $D6F4
+        &ubyte  MIXREGDATA      = $D6F5
+        &ubyte  DIGILLSB        = $D6F8
+        &ubyte  DIGILMSB        = $D6F9
+        &ubyte  DIGIRLSB        = $D6FA
+        &ubyte  DIGIRMSB        = $D6FB
+        &ubyte  READBACKLSB     = $D6FC
+        &ubyte  READBACKMSB     = $D6FD
+        &ubyte  PWMPDM          = $D711
+
+; ---- end of 45IO27 registers ----
+
+; ---- 45E100 Ethernet registers ----
+
+        &ubyte  ETHFLAGS0       = $D6E0
+        &ubyte  ETHFLAGS1       = $D6E1
+        &ubyte  ETHTXSZLSB      = $D6E2
+        &ubyte  ETHTXSZMSB      = $D6E3
+        &ubyte  ETHCOMMAND      = $D6E4
+        &ubyte  ETHFLAGS2       = $D6E5
+        &ubyte  ETHMIIM         = $D6E6
+        &ubyte  ETHMIIMVLSB     = $D6E7
+        &ubyte  ETHMIIMVMSB     = $D6E8
+        &ubyte  ETHMACADDR1     = $D6E9
+        &ubyte  ETHMACADDR2     = $D6EA
+        &ubyte  ETHMACADDR3     = $D6EB
+        &ubyte  ETHMACADDR4     = $D6EC
+        &ubyte  ETHMACADDR5     = $D6ED
+        &ubyte  ETHMACADDR6     = $D6EE
+
+; ---- end of Ethernet registers ----
+
+
+; ---- CIA 6526 Hypervisor registers ----
+
+        &ubyte  CIA1TALATCH0    = $DC10
+        &ubyte  CIA1TALATCH1    = $DC11
+        &ubyte  CIA1TALATCH2    = $DC12
+        &ubyte  CIA1TALATCH3    = $DC13
+        &ubyte  CIA1TALATCH4    = $DC14
+        &ubyte  CIA1TALATCH5    = $DC15
+        &ubyte  CIA1TALATCH6    = $DC16
+        &ubyte  CIA1TALATCH7    = $DC17
+        &ubyte  CIA1TODJIF      = $DC18
+        &ubyte  CIA1TODSEC      = $DC19
+        &ubyte  CIA1TODMIN      = $DC1A
+        &ubyte  CIA1TODHOUR     = $DC1B
+        &ubyte  CIA1ALRMJIF     = $DC1C
+        &ubyte  CIA1ALRMSEC     = $DC1D
+        &ubyte  CIA1ALRMMIN     = $DC1E
+        &ubyte  CIA1ALRMHOUR    = $DC1F
+
+        &ubyte  CIA2TALATCH0    = $DD10
+        &ubyte  CIA2TALATCH1    = $DD11
+        &ubyte  CIA2TALATCH2    = $DD12
+        &ubyte  CIA2TALATCH3    = $DD13
+        &ubyte  CIA2TALATCH4    = $DD14
+        &ubyte  CIA2TALATCH5    = $DD15
+        &ubyte  CIA2TALATCH6    = $DD16
+        &ubyte  CIA2TALATCH7    = $DD17
+        &ubyte  CIA2TODJIF      = $DD18
+        &ubyte  CIA2TODSEC      = $DD19
+        &ubyte  CIA2TODMIN      = $DD1A
+        &ubyte  CIA2TODHOUR     = $DD1B
+        &ubyte  CIA2ALRMJIF     = $DD1C
+        &ubyte  CIA2ALRMSEC     = $DD1D
+        &ubyte  CIA2ALRMMIN     = $DD1E
+        &ubyte  CIA2ALRMHOUR    = $DD1F
+
+; ---- end of CIA 6526 Hypervisor registers ----
+
+asmsub banks(ubyte banks @A) {
+    ; -- set the memory bank configuration
+    ;    see https://www.c64-wiki.com/wiki/Bank_Switching
+    %asm {{
+        and  #%00000111
+        sta  P8ZP_SCRATCH_REG
+        php
+        sei
+        lda  $01
+        and  #%11111000
+        ora  P8ZP_SCRATCH_REG
+        sta  $01
+        plp
+        rts
+    }}
+}
+
+inline asmsub getbanks() -> ubyte @A {
+    ; -- get the current memory bank configuration
+    ;    see https://www.c64-wiki.com/wiki/Bank_Switching
+    %asm {{
+        lda  $01
+        and  #%00000111
+    }}
+}
+
+    asmsub x16jsrfar() {
+        %asm {{
+            ; setup a JSRFAR call (using X16 call convention)
+            sta  P8ZP_SCRATCH_W2        ; save A
+            sty  P8ZP_SCRATCH_W2+1      ; save Y
+            php
+            pla
+            sta  P8ZP_SCRATCH_REG       ; save Status
+
+            pla
+            sta  P8ZP_SCRATCH_W1
+            pla
+            sta  P8ZP_SCRATCH_W1+1
+
+            ; retrieve arguments
+            ldy  #$01
+            lda  (P8ZP_SCRATCH_W1),y            ; grab low byte of target address
+            sta  _jmpfar_vec
+            iny
+            lda  (P8ZP_SCRATCH_W1),y            ; now the high byte
+            sta  _jmpfar_vec+1
+            iny
+            lda  (P8ZP_SCRATCH_W1),y            ; then the target bank
+            sta  P8ZP_SCRATCH_B1
+
+            ; adjust return address to skip over the arguments
+            clc
+            lda  P8ZP_SCRATCH_W1
+            adc  #3
+            sta  P8ZP_SCRATCH_W1
+            lda  P8ZP_SCRATCH_W1+1
+            adc  #0
+            pha
+            lda  P8ZP_SCRATCH_W1
+            pha
+            lda  $01        ; save old ram banks
+            pha
+            ; set target bank, restore A, Y and flags
+            lda  P8ZP_SCRATCH_REG
+            pha
+            lda  P8ZP_SCRATCH_B1
+            jsr  banks
+            lda  P8ZP_SCRATCH_W2
+            ldy  P8ZP_SCRATCH_W2+1
+            plp
+            jsr  _jsrfar        ; do the actual call
+            ; restore bank without clobbering status flags and A register
+            sta  P8ZP_SCRATCH_W1
+            php
+            pla
+            sta  P8ZP_SCRATCH_B1
+            pla
+            jsr  banks
+            lda  P8ZP_SCRATCH_B1
+            pha
+            lda  P8ZP_SCRATCH_W1
+            plp
+            rts
+_jsrfar     jmp  (_jmpfar_vec)
+
+            .section BSS
+_jmpfar_vec .word ?
+            .send BSS
+
+            ; !notreached!
+        }}
+    }
+
+    sub get_vic_memory_base() -> uword {
+        ; one of the 4 possible banks. $0000/$4000/$8000/$c000.
+        c64.CIA2DDRA |= %11
+        return ((c64.CIA2PRA & 3) ^ 3) as uword << 14
+    }
+
+    sub get_char_matrix_ptr() -> uword {
+        ; Usually the character screen matrix is at 1024-2039 (see above)
+        ; However the vic memory configuration can be altered and this moves these registers with it.
+        ; So this routine determines it dynamically from the VIC memory setup.
+        uword chars_matrix_offset = (c64.VMCSB & $f0) as uword << 6
+        return get_vic_memory_base() + chars_matrix_offset
+    }
+
+    sub get_bitmap_ptr() -> uword {
+        return get_vic_memory_base() + ((c64.VMCSB & %00001000) as uword << 10)
     }
 
     sub get_sprite_addr_ptrs() -> uword {
@@ -560,8 +986,8 @@ _irq_handler
 		beq  +
 		jmp  cbm.IRQDFRT		; continue with normal kernal irq routine
 +		lda  #$ff
-;		sta  mega65.VICIRQ			; acknowledge raster irq
-;		lda  mega65.CIA1ICR		; acknowledge CIA1 interrupt
+;		sta  c64.VICIRQ			; acknowledge raster irq
+;		lda  c64.CIA1ICR		; acknowledge CIA1 interrupt
 		pla
 		tay
 		pla
@@ -587,9 +1013,9 @@ asmsub  restore_irq() clobbers(A) {
 		lda  #>cbm.IRQDFRT
 		sta  cbm.CINV+1
 		lda  #0
-		sta  mega65.IREQMASK	; disable raster irq
+		sta  c64.IREQMASK	; disable raster irq
 		lda  #%10000001
-		sta  mega65.CIA1ICR	; restore CIA1 irq
+		sta  c64.CIA1ICR	; restore CIA1 irq
 		cli
 		plp
 		rts
@@ -604,15 +1030,15 @@ asmsub  set_rasterirq(uword handler @AY, uword rasterpos @R0) clobbers(A) {
         sty  user_vector+1
 
 		lda  #%01111111
-		sta  mega65.CIA1ICR    ; "switch off" interrupts signals from cia-1
-		sta  mega65.CIA2ICR    ; "switch off" interrupts signals from cia-2
-		lda  mega65.CIA1ICR    ; ack previous irq
-		lda  mega65.CIA2ICR    ; ack previous irq
+		sta  c64.CIA1ICR    ; "switch off" interrupts signals from cia-1
+		sta  c64.CIA2ICR    ; "switch off" interrupts signals from cia-2
+		lda  c64.CIA1ICR    ; ack previous irq
+		lda  c64.CIA2ICR    ; ack previous irq
         lda  cx16.r0
         ldy  cx16.r0+1
 		jsr  sys.set_rasterline
  		lda  #%00000001
-		sta  mega65.IREQMASK   ; enable raster interrupt signals from vic
+		sta  c64.IREQMASK   ; enable raster interrupt signals from vic
 
         lda  #<_raster_irq_handler
         sta  cbm.CINV
@@ -629,7 +1055,7 @@ _raster_irq_handler
         pha
         jsr  sys.restore_prog8_internals
         lda  #$ff
-        sta  mega65.VICIRQ			; acknowledge raster irq
+        sta  c64.VICIRQ			; acknowledge raster irq
         pla
         beq  +
 		jmp  cbm.IRQDFRT                ; continue with kernal irq routine
@@ -670,13 +1096,13 @@ user_vector	.word ?
 asmsub  set_rasterline(uword line @AY) {
     ; -- only set a new raster line for the raster IRQ
     %asm {{
-        sta  mega65.RASTER     ; set the raster line number where interrupt should occur
-        lda  mega65.SCROLY
+        sta  c64.RASTER     ; set the raster line number where interrupt should occur
+        lda  c64.SCROLY
         and  #%01111111
         cpy  #0
         beq  +
         ora  #%10000000
-+       sta  mega65.SCROLY     ; clear most significant bit of raster position
++       sta  c64.SCROLY     ; clear most significant bit of raster position
         rts
     }}
 }
@@ -694,11 +1120,17 @@ asmsub  set_rasterline(uword line @AY) {
 
     asmsub wait(uword jiffies @AY) {
         ; --- wait approximately the given number of jiffies (1/60th seconds) (N or N+1)
-        ;     note: the system irq handler has to be active for this to work as it depends on the system jiffy clock
+        ;     note: CIA2 TIMER B has to be active for this to work.
         %asm {{
             stx  P8ZP_SCRATCH_B1
             sta  P8ZP_SCRATCH_W1
             sty  P8ZP_SCRATCH_W1+1
+            ; divide by 4
+            lsr  P8ZP_SCRATCH_W1+1
+            ror  P8ZP_SCRATCH_W1
+            clc
+            lsr  P8ZP_SCRATCH_W1+1
+            ror  P8ZP_SCRATCH_W1
 
 _loop       lda  P8ZP_SCRATCH_W1
             ora  P8ZP_SCRATCH_W1+1
@@ -706,9 +1138,11 @@ _loop       lda  P8ZP_SCRATCH_W1
             ldx  P8ZP_SCRATCH_B1
             rts
 
-+           lda  cbm.TIME_LO
++           lda  c64.CIA2TBL
+            and  #%00000001
             sta  P8ZP_SCRATCH_B1
--           lda  cbm.TIME_LO
+-           lda  c64.CIA2TBL
+            and  #%00000001
             cmp  P8ZP_SCRATCH_B1
             beq  -
 
@@ -724,9 +1158,9 @@ _loop       lda  P8ZP_SCRATCH_W1
         ; --- busy wait till the next vsync has occurred (approximately), without depending on custom irq handling.
         ;     note: a more accurate way to wait for vsync is to set up a vsync irq handler instead.
         %asm {{
--           bit  mega65.SCROLY
+-           bit  c64.SCROLY
             bpl  -
--           bit  mega65.SCROLY
+-           bit  c64.SCROLY
             bmi  -
             rts
         }}
@@ -736,7 +1170,7 @@ _loop       lda  P8ZP_SCRATCH_W1
         ; --- busy wait till the raster position has reached the bottom screen border (approximately)
         ;     note: a more accurate way to do this is by using a raster irq handler instead.
         %asm {{
--           bit  mega65.SCROLY
+-           bit  c64.SCROLY
             bpl  -
         }}
     }
@@ -746,15 +1180,15 @@ _loop       lda  P8ZP_SCRATCH_W1
         %asm {{
             cpy  #0
             bne  _larger
--           cmp  mega65.RASTER
+-           cmp  c64.RASTER
             bne  -
-            bit  mega65.SCROLY
+            bit  c64.SCROLY
             bmi  -
             rts
 _larger
-            cmp  mega65.RASTER
+            cmp  c64.RASTER
             bne  _larger
-            bit  mega65.SCROLY
+            bit  c64.SCROLY
             bpl  _larger
             rts
         }}
@@ -1325,18 +1759,18 @@ asmsub  init_system()  {
         ldz  #$83
         map
         ; bank $d000 I/O in via C64 registers
-        lda #$35
-        sta $01
+        lda  #$35
+        sta  $01
         ; C65 mode I/O knock
         ;lda #$a5
         ;sta $d02f
         ;lda #$96
         ;sta $d02f
         ; MEGA65 mode / VIC-IV I/O knock
-        lda #$47
-        sta $d02f
-        lda #$53
-        sta $d02f
+        lda  #$47
+        sta  $d02f
+        lda  #$53
+        sta  $d02f
         ; end of MAP sequence allowing interrupts again
         eom
         ; ensure 40MHz
@@ -1345,6 +1779,12 @@ asmsub  init_system()  {
         ; Use base page $16
         ;lda #$16
         ;tab
+        lda  #6
+        sta  c64.EXTCOL
+        ;lda  #7
+        ;sta  cbm.COLOR
+        lda  #0
+        sta  c64.BGCOL0
 +
         .cpu  "6502"
         rts
