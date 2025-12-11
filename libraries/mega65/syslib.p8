@@ -1120,29 +1120,22 @@ asmsub  set_rasterline(uword line @AY) {
 
     asmsub wait(uword jiffies @AY) {
         ; --- wait approximately the given number of jiffies (1/60th seconds) (N or N+1)
-        ;     note: CIA2 TIMER B has to be active for this to work.
+        ;     note: CIA2 TIMER A has to be active for this to work.
         %asm {{
             stx  P8ZP_SCRATCH_B1
             sta  P8ZP_SCRATCH_W1
             sty  P8ZP_SCRATCH_W1+1
-            ; divide by 4
-            lsr  P8ZP_SCRATCH_W1+1
-            ror  P8ZP_SCRATCH_W1
-            clc
-            lsr  P8ZP_SCRATCH_W1+1
-            ror  P8ZP_SCRATCH_W1
-
 _loop       lda  P8ZP_SCRATCH_W1
             ora  P8ZP_SCRATCH_W1+1
             bne  +
             ldx  P8ZP_SCRATCH_B1
             rts
 
-+           lda  c64.CIA2TBL
-            and  #%00000001
++           lda  c64.CIA2TAH
+            and  #%11000000
             sta  P8ZP_SCRATCH_B1
--           lda  c64.CIA2TBL
-            and  #%00000001
+-           lda  c64.CIA2TAH
+            and  #%11000000
             cmp  P8ZP_SCRATCH_B1
             beq  -
 
@@ -1734,6 +1727,134 @@ cx16 {
             rts
         }}
     }
+    ; ---- utilities -----
+    ubyte current_bank = 0  ; current bank via MAP as we can't query it.
+    ubyte new_bank = 0      ; place to stash requested bank briefly
+
+    ; no rom unless we fake it?
+    inline asmsub rombank(ubyte bank @A) {
+        ; -- set the rom banks
+        %asm {{
+            nop
+        }}
+    }
+
+    ; support M65 banks starting with zero?
+    ; so rambank(0) and banks(0) are not the same...
+    asmsub rambank(ubyte bank @A) {
+        ; -- set the ram bank
+        %asm {{
+            .cpu "45gs02"
+            phz
+            phy
+            phx
+            sta  cx16.current_bank  ; save currently selected bank since we can't retrieve from MAP
+            tax                     ; stash x16bank from A for a moment
+            lda  #$00
+            tay                     ; make sure this is zero in case we branch to _switch0 (A&X zeroed below)
+            ldz  #$83               ; default "bank 0" with kernal at $e000
+            txa                     ; bring x16bank back to A
+            beq  _switch0           ; x16bank 0 is base RAM or default mapping so skip ahead
+            tay                     ; use x16bank as loop counter
+            lda  #$00               ; we will track the most significant nibble in Z
+            taz                     ; so start from zero
+            lda  #$40               ; x16bank 1 is at offset $06000 ($6000+$A000=$10000 start of bank)
+-           clc                     ; so we load with #$40 since we will for sure at $20 below (giving the $60)
+            adc  #$20               ; offsets of $6000, $8000, ...   (which $a000 is added to)
+            bcc  +                  ; no overflow so don't increment Z
+            inz                     ; increment our highest nibble
++           dey
+            bne  -                  ; keep adding #$20
+            tay                     ; move offset portion to Y
+            tza                     ; get high nibble of offset
+            clc
+            adc  #$20               ; add to the 0, 1, 3, 4, or 5 already in A (giving M65 bank 1/4/5) $A000 offset enabled            txa                     ; retrieve x16bank from X
+            taz                     ; Z now has correct value for bank 1 (but will need adjusting for 4&5)
+            txa                     ; retrieve x16bank
+            dec  a                  ; make zero relative
+            asr                     ; shift bits [4:3] to [1:0]
+            asr
+            asr
+            beq  _switch0           ; zero means M65 bank 1 and we should be setup
+            tza                     ; grab offset highest nibble
+            clc
+            adc  #$02               ; skip over banks 2&3
+            taz                     ; Needs to be in Z
+_switch0:
+            lda  #$00               ; no offset for lower 32KB no matter what bank
+            tax                     ; no offset enable for lower 32KB
+            map                     ; do the mapping
+            eom                     ; end of mapping, allow interrupts.
+            plx
+            ply
+            plz
+            .cpu "6502"
+            rts
+        }}
+    }
+
+    ; all rom banks are 0 for now.
+    inline asmsub getrombank() -> ubyte @A {
+        ; -- get the current rom bank
+        %asm {{
+            lda  #$00
+        }}
+    }
+
+    ; this *only* reports 384KB chip ram in 8KB RAM banks
+    ; this is not related to native c64 6510 banking
+    inline asmsub getrambank() -> ubyte @A {
+        ; -- get the current RAM bank
+        %asm {{
+            lda  cx16.current_bank
+        }}
+    }
+
+    inline asmsub push_rombank(ubyte newbank @A) clobbers(Y) {
+        ; push the current rombank on the stack and makes the given rom bank active
+        ; combined with pop_rombank() makes for easy temporary rom bank switch
+        %asm {{
+            nop
+        }}
+    }
+
+    inline asmsub pop_rombank() {
+        ; sets the current rom bank back to what was stored previously on the stack
+        %asm {{
+            nop
+        }}
+    }
+
+    inline asmsub push_rambank(ubyte newbank @A) clobbers(Y) {
+        ; push the current hiram bank on the stack and makes the given hiram bank active
+        ; combined with pop_rombank() makes for easy temporary hiram bank switch
+        %asm {{
+            sta  cx16.new_bank
+            lda  cx16.current_bank
+            pha
+            lda  cx16.new_bank
+            jsr  cx16.rambank
+        }}
+    }
+
+    inline asmsub pop_rambank() {
+        ; sets the current hiram bank back to what was stored previously on the stack
+        %asm {{
+            pla
+            jsr  cx16.rambank
+        }}
+    }
+
+    asmsub numbanks() clobbers(X) -> uword @AY {
+        ; -- Returns the number of available M65 chip ram backed 8KB RAM banks.
+        ;    Note that on the X16 the number of banks can be 256 so a word is returned.
+        ;    Currently this is 24 on Mega65. (3x64KB banks with 8KB banks each)
+        %asm {{
+            lda #$18
+            ldy #$00
+            rts
+        }}
+      }
 }
 
 p8_sys_startup {
