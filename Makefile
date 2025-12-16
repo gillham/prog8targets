@@ -24,10 +24,11 @@ PCCARGSVIC20P3=-target config/vic20plus3.properties
 PCCARGSVIC20P8=-target config/vic20plus8.properties
 PCCARGSCX16OS=-target config/cx16os.properties
 PCCARGSPLUS4=-target config/plus4.properties
+PCCARGSMEGA65=-target config/mega65.properties
 
 PROGS	= build/hello_f256.pgz build/hello.rp6502 build/hello_sxb6.bin \
 	  build/hello_vic20.prg build/hello_vic20plus3.prg build/hello_vic20plus8.prg \
-	  build/hello_cx16os.prg build/hello_plus4.prg \
+	  build/hello_cx16os.prg build/hello_plus4.prg build/hello_mega65.prg \
 	  build/arch.prg build/pwd.prg build/uname.prg
 
 all: build $(PROGS)
@@ -66,6 +67,9 @@ build/hello_cx16os.prg: src/hello_cx16os.p8
 
 build/hello_plus4.prg: src/hello_plus4.p8
 	$(PCC) $(PCCARGSPLUS4) $<
+
+build/hello_mega65.prg: src/hello_mega65.p8
+	$(PCC) $(PCCARGSMEGA65) $<
 
 build/arch.prg: src/arch.p8
 	$(PCC) $(PCCARGSCX16OS) $<

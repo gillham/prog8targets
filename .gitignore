@@ -2,3 +2,7 @@
 build/
 # ctags files
 tags
+# JetBrains IDE files
+.idea/
+# VSCode files
+.vscode/
