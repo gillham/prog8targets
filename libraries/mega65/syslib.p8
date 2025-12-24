@@ -520,6 +520,10 @@ c65 {
 mega65 {
         ; placeholder
         const ubyte PROG8_MEGA65_BANK_CONFIG=30
+        ubyte @shared restore_sysflags
+
+        ; MEGA65 kernal routines
+        extsub $FF47 = SYSFLAGS(ubyte value @ A, bool dir @ Pc) -> ubyte @ A ; read/set system flags
 
         ; I/O blocks
         ; $D000-$D02F: VIC-II (in C64 block above)
@@ -1906,7 +1910,13 @@ asmsub  init_system()  {
         ;sta  cbm.COLOR
         lda  #0
         sta  c64.BGCOL0
-+
+        ; save system flags prior to disabling function key macros
+        sec
+        jsr mega65.SYSFLAGS
+        sta mega65.restore_sysflags
+        ora #%00100000  ; disable function key macros
+        clc
+        jsr mega65.SYSFLAGS
         .cpu  "6502"
         rts
     }}
@@ -1925,6 +1935,10 @@ asmsub  cleanup_at_exit() {
     ; executed when the main subroutine does rts
     %asm {{
         .cpu "45gs02"
+        ; restore system flags
+        lda mega65.restore_sysflags
+        clc
+        jsr mega65.SYSFLAGS
         ; switch back to base page 0
         lda #$00
         tab
