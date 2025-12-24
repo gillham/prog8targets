@@ -890,6 +890,29 @@ _jmpfar_vec .word ?
         ; Otherwise store the correct sprite data pointer location somewhere yourself and reuse it.
         @(get_sprite_addr_ptrs() + sprite_num) = lsb(sprite_data_address / 64)
     }
+
+    ; set processor speed between 1/3.5/40
+    ; TODO: support 2MHz C128 compatible mode
+    sub speed(ubyte mhz) {
+        when mhz {
+            1 -> {
+                ; disable C65 fast mode
+                c65.VIDMODE &= %10111111
+            }
+            3,4 -> {
+                ; enable C65 fast mode
+                c65.VIDMODE |= %01000000
+                ; disable MEGA65 40MHz mode
+                mega65.CHR16 &= %10111111
+            }
+            40 -> {
+                ; enable C65 fast mode
+                c65.VIDMODE |= %01000000
+                ; enable MEGA65 40 MHz mode
+                mega65.CHR16 |= %01000000
+            }
+        }
+    }
 }
 
 sys {
