@@ -891,6 +891,19 @@ _jmpfar_vec .word ?
         @(get_sprite_addr_ptrs() + sprite_num) = lsb(sprite_data_address / 64)
     }
 
+    ;
+    ; return current processor clock speed
+    ; returns 1/3/40 (TODO: support 2MHz C128 mode)
+    ; 3.5 MHz returned as 3.
+    ;
+    sub get_speed() -> ubyte {
+        bool clock_c65 = ((c65.VIDMODE & %01000000) >> 6) as bool
+        bool clock_m65 = ((mega65.CHR16 & %01000000) >> 6) as bool
+        if clock_c65 and clock_m65 return 40
+        if clock_c65 and not clock_m65 return 3
+        return 1
+    }
+
     ; set processor speed between 1/3.5/40
     ; TODO: support 2MHz C128 compatible mode
     sub speed(ubyte mhz) {
