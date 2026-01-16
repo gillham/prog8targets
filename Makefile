@@ -72,7 +72,7 @@ build/hello_plus4.prg: src/hello_plus4.p8
 build/hello_mega65.prg: src/hello_mega65.p8
 	$(PCC) $(PCCARGSMEGA65) $<
 
-build/hello_gametank.prg: src/hello_gametank.p8
+build/hello_gametank.bin: src/hello_gametank.p8
 	$(PCC) $(PCCARGSGTRC) $<
 
 build/arch.prg: src/arch.p8
@@ -86,6 +86,9 @@ build/uname.prg: src/uname.p8
 
 clean:
 	$(RM) build/*
+
+emu-gametank: build/hello_gametank.bin
+	gte $<
 
 run-rp6502: build/hello.rp6502
 	tools/rp6502.py -c .rp6502 run $<
