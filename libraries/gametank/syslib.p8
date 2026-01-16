@@ -864,7 +864,43 @@ asmsub  init_system_phase2()  {
         cld
         clc
         clv
-;-       jmp  -  ; halt
+
+        ; fill screen memory with a space
+        lda  #<gametank.Screen
+        sta  cx16.r0L
+        lda  #>gametank.Screen
+        sta  cx16.r0H
+        lda  #<24*20
+        sta  cx16.r1L
+        lda  #>24*20
+        sta  cx16.r1H
+        lda  #32
+        jsr  sys.memset
+
+        ; set color memory to all black. (white instead?)
+        lda  #<gametank.Color
+        sta  cx16.r0L
+        lda  #>gametank.Color
+        sta  cx16.r0H
+        lda  #<24*20
+        sta  cx16.r1L
+        lda  #>24*20
+        sta  cx16.r1H
+        lda  #0
+        jsr  sys.memset
+
+        ; zero out the framebuffer
+        lda  #<gametank.SCREENRAM
+        sta  cx16.r0L
+        lda  #>gametank.SCREENRAM
+        sta  cx16.r0H
+        lda  #<128*128
+        sta  cx16.r1L
+        lda  #>128*128
+        sta  cx16.r1H
+        lda  #0
+        jsr  sys.memset
+
         rts
     }}
 }
