@@ -25,11 +25,12 @@ PCCARGSVIC20P8=-target config/vic20plus8.properties
 PCCARGSCX16OS=-target config/cx16os.properties
 PCCARGSPLUS4=-target config/plus4.properties
 PCCARGSMEGA65=-target config/mega65.properties
+PCCARGSGTRC=-target config/gametank.properties -varsgolden -slabsgolden
 
 PROGS	= build/hello_f256.pgz build/hello.rp6502 build/hello_sxb6.bin \
 	  build/hello_vic20.prg build/hello_vic20plus3.prg build/hello_vic20plus8.prg \
 	  build/hello_cx16os.prg build/hello_plus4.prg build/hello_mega65.prg \
-	  build/arch.prg build/pwd.prg build/uname.prg
+	  build/hello_gametank.bin  build/arch.prg build/pwd.prg build/uname.prg
 
 all: build $(PROGS)
 rp6502: build build/hello.rp6502 run-rp6502 screenrp6502
@@ -70,6 +71,9 @@ build/hello_plus4.prg: src/hello_plus4.p8
 
 build/hello_mega65.prg: src/hello_mega65.p8
 	$(PCC) $(PCCARGSMEGA65) $<
+
+build/hello_gametank.prg: src/hello_gametank.p8
+	$(PCC) $(PCCARGSGTRC) $<
 
 build/arch.prg: src/arch.p8
 	$(PCC) $(PCCARGSCX16OS) $<
