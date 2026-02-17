@@ -774,12 +774,12 @@ asmsub  init_system()  {
         sta  0,y
         bne  -                  ; busy loop delay while VIA stabilizes
 
-        ; clear most of stack
-        ldy  #$fc
-        lda  #0
--       dey
-        sta  $0100,y
-        bne  -                  ; busy loop delay while VIA stabilizes
+;        ; clear most of stack
+;        ldy  #$fe
+;        lda  #0
+;-       dey
+;        sta  $0100,y
+;        bne  -                  ; busy loop delay while VIA stabilizes
 
 
         ; initialize banking (these bits make no sense)
@@ -812,8 +812,7 @@ asmsub  init_system()  {
         sta  gametank.BANKREG
 
 ;        ; early exit
-        clc
-        bcc  _out
+        bra  _out
 ;
         ; try to draw to the screen ram
         ldx  #20
@@ -832,15 +831,13 @@ _loop1: lda  #$0f
         inc  $51
         dex
         bne  _loop0
-;-       jmp  -      ; halt
 _out:
-        ;cli
         rts
 _irq:
         lda  #1
         sta  gametank.blit_done         ; signals blitter completion irq fired.
         rti
-_virq:
+_vnmi:
         inc  cbm.TIME_LO
         bne  +
         inc  cbm.TIME_MID
@@ -851,7 +848,7 @@ _virq:
     ; This creates 6502 vectors at the end of ROM space.
     ; The section is defined in the target .properties file.
     .section rom_vectors
-        .addr p8_sys_startup.init_system._virq
+        .addr p8_sys_startup.init_system._vnmi
         .addr prog8_program_start
         .addr p8_sys_startup.init_system._irq
     .send
@@ -861,7 +858,7 @@ _virq:
 
 asmsub  init_system_phase2()  {
     %asm {{
-        cld
+        ;cld    ; done already
         clc
         clv
 
