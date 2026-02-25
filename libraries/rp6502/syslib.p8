@@ -364,20 +364,6 @@ save_SCRATCH_ZPWORD2	.word  ?
         }}
     }
 
-    inline asmsub push(ubyte value @A) {
-        %asm {{
-            pha
-        }}
-    }
-
-    inline asmsub pushw(uword value @AY) {
-        %asm {{
-            pha
-            tya
-            pha
-        }}
-    }
-
     inline asmsub push_returnaddress(uword address @XY) {
         %asm {{
             ; push like JSR would:  address-1,  MSB first then LSB
@@ -392,24 +378,10 @@ save_SCRATCH_ZPWORD2	.word  ?
         }}
     }
 
-    inline asmsub pop() -> ubyte @A {
-        %asm {{
-            pla
-        }}
-    }
-
-    inline asmsub popw() -> uword @AY {
-        %asm {{
-            pla
-            tay
-            pla
-        }}
-    }
-
 }
 
 cx16 {
-    ; the sixteen virtual 16-bit registers that the CX16 has defined in the zeropage
+; the sixteen virtual 16-bit registers in both normal unsigned mode and signed mode (s)
     &uword r0  = $0002
     &uword r1  = $0004
     &uword r2  = $0006
@@ -427,6 +399,7 @@ cx16 {
     &uword r14 = $001e
     &uword r15 = $0020
 
+    ; signed word versions
     &word r0s  = $0002
     &word r1s  = $0004
     &word r2s  = $0006
@@ -444,6 +417,17 @@ cx16 {
     &word r14s = $001e
     &word r15s = $0020
 
+    ; signed long versions
+    &long r0r1sl = $0002
+    &long r2r3sl = $0006
+    &long r4r5sl = $000a
+    &long r6r7sl = $000e
+    &long r8r9sl = $0012
+    &long r10r11sl = $0016
+    &long r12r13sl = $001a
+    &long r14r15sl = $001e
+
+    ; ubyte versions (low and high bytes)
     &ubyte r0L  = $0002
     &ubyte r1L  = $0004
     &ubyte r2L  = $0006
@@ -478,6 +462,7 @@ cx16 {
     &ubyte r14H = $001f
     &ubyte r15H = $0021
 
+    ; signed byte versions (low and high bytes)
     &byte r0sL  = $0002
     &byte r1sL  = $0004
     &byte r2sL  = $0006
@@ -511,6 +496,41 @@ cx16 {
     &byte r13sH = $001d
     &byte r14sH = $001f
     &byte r15sH = $0021
+
+    ; boolean versions
+    &bool r0bL  = $0002
+    &bool r1bL  = $0004
+    &bool r2bL  = $0006
+    &bool r3bL  = $0008
+    &bool r4bL  = $000a
+    &bool r5bL  = $000c
+    &bool r6bL  = $000e
+    &bool r7bL  = $0010
+    &bool r8bL  = $0012
+    &bool r9bL  = $0014
+    &bool r10bL = $0016
+    &bool r11bL = $0018
+    &bool r12bL = $001a
+    &bool r13bL = $001c
+    &bool r14bL = $001e
+    &bool r15bL = $0020
+
+    &bool r0bH  = $0003
+    &bool r1bH  = $0005
+    &bool r2bH  = $0007
+    &bool r3bH  = $0009
+    &bool r4bH  = $000b
+    &bool r5bH  = $000d
+    &bool r6bH  = $000f
+    &bool r7bH  = $0011
+    &bool r8bH  = $0013
+    &bool r9bH  = $0015
+    &bool r10bH = $0017
+    &bool r11bH = $0019
+    &bool r12bH = $001b
+    &bool r13bH = $001d
+    &bool r14bH = $001f
+    &bool r15bH = $0021
 
     asmsub save_virtual_registers() clobbers(A,Y) {
         %asm {{

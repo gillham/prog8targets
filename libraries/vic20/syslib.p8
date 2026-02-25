@@ -758,20 +758,6 @@ _no_msb_size
         }}
     }
 
-    inline asmsub push(ubyte value @A) {
-        %asm {{
-            pha
-        }}
-    }
-
-    inline asmsub pushw(uword value @AY) {
-        %asm {{
-            pha
-            tya
-            pha
-        }}
-    }
-
     inline asmsub push_returnaddress(uword address @XY) {
         %asm {{
             ; push like JSR would:  address-1,  MSB first then LSB
@@ -798,19 +784,6 @@ _no_msb_size
         }}
     }
 
-    inline asmsub pop() -> ubyte @A {
-        %asm {{
-            pla
-        }}
-    }
-
-    inline asmsub popw() -> uword @AY {
-        %asm {{
-            pla
-            tay
-            pla
-        }}
-    }
 }
 
 cx16 {
@@ -854,6 +827,16 @@ cx16 {
     &word r13s = $02fa
     &word r14s = $02fc
     &word r15s = $02fe
+
+    ; signed long versions
+    &long r0r1sl = $02e0
+    &long r2r3sl = $02e4
+    &long r4r5sl = $02e8
+    &long r6r7sl = $02ec
+    &long r8r9sl = $02f0
+    &long r10r11sl = $02f4
+    &long r12r13sl = $02f8
+    &long r14r15sl = $02fc
 
     ; ubyte versions (low and high bytes)
     &ubyte r0L  = $02e0
