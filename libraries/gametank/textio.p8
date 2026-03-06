@@ -355,6 +355,7 @@ charloop:   sty  TEMP       ; save Y
             rts
         }}
     }
+; needs to be page aligned for current draw system
 %align $100 ; must be before label
 MYFONT2:
 %asmbinary "font5x6.bin", 2, 768

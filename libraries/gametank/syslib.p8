@@ -97,7 +97,7 @@ asmsub kbdbuf_clear() {
 
 gametank {
         ; GameTank hardware registers and state
-        bool @shared blit_done = false          ; true when blitter interrupts
+        bool @shared blit_active = false          ; True when blitter is active. Completion IRQ sets false.
 
 
         ; Virtual text screen.
@@ -113,11 +113,11 @@ gametank {
 
         ; Banking register
         &ubyte  BANKREG             = $2005     ; Banking Register
-        const ubyte SPRITEPAGEMASK  = %00000111 ; Sprite RAM page selection bits
-        const ubyte FRAMEBUFFERMASK = %00001000 ; Bit selects active framebuffer to read/write/blit
-        const ubyte CLIP_LR_MASK    = %00010000 ; Bit to enable clipping left/right edge blits
-        const ubyte CLIP_TB_MASK    = %00100000 ; Bit to enable clipping top/bottom edge blits
-        const ubyte RAMPAGEMASK     = %11000000 ; General purpose RAM page selection bits
+        const ubyte SPRITEPAGE      = %00000111 ; Sprite RAM page selection bits
+        const ubyte FRAMEBUFFER     = %00001000 ; Bit selects active framebuffer to read/write/blit
+        const ubyte CLIP_LR         = %00010000 ; Bit to enable clipping left/right edge blits
+        const ubyte CLIP_TB         = %00100000 ; Bit to enable clipping top/bottom edge blits
+        const ubyte RAMPAGE         = %11000000 ; General purpose RAM page selection bits
 
         ; Audio control register
         &ubyte  ACPRATE             = $2006     ; Audio enable and sample rate
@@ -748,7 +748,7 @@ asmsub  init_system()  {
 
         ; try to initialize video
         ; try to select output framebuffer
-        lda  #gametank.DMA_CPU_TO_VRAM|gametank.DMA_NMI
+        lda  #gametank.DMA_CPU_TO_VRAM|gametank.DMA_NMI|gametank.DMA_OPAQUE
         ;lda  #%00100010         ; DMA_CPU_TO_VRAM | DMA_PAGE_OUT -- 2nd FB
         sta  gametank.DMAFLAGS
 
@@ -778,10 +778,12 @@ _loop1: lda  #$0f
         dex
         bne  _loop0
 _out:
+        cli             ; enable IRQs now
         rts
 _irq:
-        lda  #1
-        sta  gametank.blit_done         ; signals blitter completion irq fired.
+        lda  #0
+        sta  gametank.blit_active   ; signals blitter completion irq fired.
+        sta  gametank.BLIT_START    ; clear IRQ
         rti
 _vnmi:
         inc  cbm.TIME_LO
