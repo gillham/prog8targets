@@ -46,7 +46,7 @@ build/hello_f256.bin: src/hello_f256.p8
 	$(PCC) $(PCCARGSF256) $<
 
 build/hello.rp6502: build/hello_rp6502.bin
-	tools/rp6502.py create -o $@ -a 0x0200 -r 0x0200 $<
+	tools/rp6502.py -a 0x0200 -r 0x0200 -o $@ create $<
 
 build/hello_rp6502.bin: src/hello_rp6502.p8
 	$(PCC) $(PCCARGSRP6502) $<
