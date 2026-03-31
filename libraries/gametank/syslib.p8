@@ -31,22 +31,40 @@ inline asmsub GETIN2() clobbers(X,Y) -> ubyte @A {
         lda  gametank.GAMEPAD2  ; causes *other* controller to reset select line
         lda  gametank.GAMEPAD1  ; read 1st set of buttons
         ldx  gametank.GAMEPAD1  ; read 2nd set of buttons
-        lda  #0
-        cpx  #$ff
-        beq  +
-        lda  #'2'
+        eor  #255               ; invert A
+        ;lda  #0
+        ;cpx  #$ff
+        ;beq  +
+        ;lda  #'2'
 +       nop  
+    }}
+}
+
+asmsub SETTIM(ubyte low @ A, ubyte middle @ X, ubyte high @ Y) {
+    ; PET stub to set the software clock
+    %asm {{
+        sty  TIME_HI
+        stx  TIME_MID
+        sta  TIME_LO
+        rts
+    }}
+}
+
+asmsub RDTIM() -> ubyte @ A, ubyte @ X, ubyte @ Y {
+    ; PET stub to read the software clock (A=lo,X=mid,Y=high)
+    %asm {{
+        ldy  TIME_HI
+        ldx  TIME_MID
+        lda  TIME_LO
+        rts
     }}
 }
 
 asmsub RDTIM16() clobbers(X) -> uword @AY {
     ; --  like RDTIM() but only returning the lower 16 bits in AY for convenience
     %asm {{
-        jsr  cbm.RDTIM
-        pha
-        txa
-        tay
-        pla
+        lda  TIME_LO
+        ldy  TIME_MID
         rts
     }}
 }
@@ -390,10 +408,10 @@ _loop       lda  P8ZP_SCRATCH_W1
         ; --- busy wait till the next vsync has occurred (approximately), without depending on custom irq handling.
         ;     note: a more accurate way to wait for vsync is to set up a vsync irq handler instead.
         %asm {{
--           ;lda  gametank.RSTL8    ; highest bit of raster line
+-           lda  cbm.TIME_LO    ; jiffy clock (updated every vsync nmi)
             and  #%00000001
             beq  -
--           ;lda  gametank.RSTL8    ; highest bit of raster line
+-           lda  cbm.TIME_LO  ; jiffy clock -- wait for one transition?
             and  #%00000001
             bne  -
             rts

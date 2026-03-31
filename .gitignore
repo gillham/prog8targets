@@ -6,3 +6,5 @@ tags
 .idea/
 # VSCode files
 .vscode/
+# stash directory
+save/
