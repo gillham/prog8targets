@@ -115,7 +115,10 @@ asmsub kbdbuf_clear() {
 
 gametank {
         ; GameTank hardware registers and state
-        bool @shared blit_active = false          ; True when blitter is active. Completion IRQ sets false.
+        ;bool @shared blit_active = false          ; True when blitter is active. Completion IRQ sets false.
+        bool @shared blit_active          ; True when blitter is active. Completion IRQ sets false.
+        bool @shared draw_busy
+        bool @shared frameflag
 
 
         ; Virtual text screen.
@@ -799,11 +802,12 @@ _out:
         cli             ; enable IRQs now
         rts
 _irq:
-        lda  #0
-        sta  gametank.blit_active   ; signals blitter completion irq fired.
-        sta  gametank.BLIT_START    ; clear IRQ
+        stz  gametank.draw_busy     ; signals draw queue is empty
+        stz  gametank.blit_active   ; signals blitter completion irq fired.
+        stz  gametank.BLIT_START    ; clear IRQ
         rti
 _vnmi:
+        stz  gametank.frameflag     ; used by sdk await_vsync()
         inc  cbm.TIME_LO
         bne  +
         inc  cbm.TIME_MID
