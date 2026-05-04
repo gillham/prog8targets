@@ -82,7 +82,71 @@ rp6502 {
     &uword  NMI_VEC         = $FFFA     ; 6502 nmi vector
     &uword  RESET_VEC       = $FFFC     ; 6502 reset vector
     &uword  IRQ_VEC         = $FFFE     ; 6502 interrupt vector
+
+inline asmsub rombank(ubyte bank @A) {
+    %asm {{
+        .error "Banking is not supported."
+    }}
 }
+
+inline asmsub rambank(ubyte bank @A) {
+    ; -- set the ram bank
+    %asm {{
+        .error "Banking is not supported."
+    }}
+}
+
+inline asmsub getrombank() -> ubyte @A {
+    %asm {{
+        .error "Banking is not supported."
+    }}
+}
+
+inline asmsub getrambank() -> ubyte @A {
+    %asm {{
+        .error "Banking is not supported."
+    }}
+}
+
+inline asmsub push_rombank(ubyte newbank @A) clobbers(Y) {
+    %asm {{
+        .error "Banking is not supported."
+    }}
+}
+
+inline asmsub pop_rombank() {
+    %asm {{
+        .error "Banking is not supported."
+    }}
+}
+
+inline asmsub push_rambank(ubyte newbank @A) clobbers(Y) {
+    %asm {{
+        .error "Banking is not supported."
+    }}
+}
+
+inline asmsub pop_rambank() {
+    %asm {{
+        .error "Banking is not supported."
+    }}
+}
+
+inline asmsub numbanks() -> ubyte @A {
+    %asm {{
+        .error "Banking is not supported."
+    }}
+}
+
+    asmsub x16jsrfar() {
+        %asm {{
+            .error "Banking is not supported."
+            ; !notreached!
+        }}
+    }
+}
+
+%import shared_sys_functions
 
 sys {
     ; ------- lowlevel system routines --------
@@ -142,125 +206,7 @@ sys {
         }}
     }
 
-    asmsub memcopy(uword source @R0, uword target @R1, uword count @AY) clobbers(A,X,Y) {
-        ; note: only works for NON-OVERLAPPING memory regions!
-        ; note: can't be inlined because is called from asm as well
-        %asm {{
-            ldx  cx16.r0
-            stx  P8ZP_SCRATCH_W1        ; source in ZP
-            ldx  cx16.r0+1
-            stx  P8ZP_SCRATCH_W1+1
-            ldx  cx16.r1
-            stx  P8ZP_SCRATCH_W2        ; target in ZP
-            ldx  cx16.r1+1
-            stx  P8ZP_SCRATCH_W2+1
-            cpy  #0
-            bne  _longcopy
 
-            ; copy <= 255 bytes
-            tay
-            bne  _copyshort
-            rts     ; nothing to copy
-
-_copyshort
-            dey
-            beq  +
--           lda  (P8ZP_SCRATCH_W1),y
-            sta  (P8ZP_SCRATCH_W2),y
-            dey
-            bne  -
-+           lda  (P8ZP_SCRATCH_W1),y
-            sta  (P8ZP_SCRATCH_W2),y
-            rts
-
-_longcopy
-            sta  P8ZP_SCRATCH_B1        ; lsb(count) = remainder in last page
-            tya
-            tax                         ; x = num pages (1+)
-            ldy  #0
--           lda  (P8ZP_SCRATCH_W1),y
-            sta  (P8ZP_SCRATCH_W2),y
-            iny
-            bne  -
-            inc  P8ZP_SCRATCH_W1+1
-            inc  P8ZP_SCRATCH_W2+1
-            dex
-            bne  -
-            ldy  P8ZP_SCRATCH_B1
-            bne  _copyshort
-            rts
-        }}
-    }
-
-    asmsub memset(uword mem @R0, uword numbytes @R1, ubyte value @A) clobbers(A,X,Y) {
-        %asm {{
-            ldy  cx16.r0
-            sty  P8ZP_SCRATCH_W1
-            ldy  cx16.r0+1
-            sty  P8ZP_SCRATCH_W1+1
-            ldx  cx16.r1
-            ldy  cx16.r1+1
-            jmp  prog8_lib.memset
-        }}
-    }
-
-    asmsub memsetw(uword mem @R0, uword numwords @R1, uword value @AY) clobbers(A,X,Y) {
-        %asm {{
-            ldx  cx16.r0
-            stx  P8ZP_SCRATCH_W1
-            ldx  cx16.r0+1
-            stx  P8ZP_SCRATCH_W1+1
-            ldx  cx16.r1
-            stx  P8ZP_SCRATCH_W2
-            ldx  cx16.r1+1
-            stx  P8ZP_SCRATCH_W2+1
-            jmp  prog8_lib.memsetw
-        }}
-    }
-
-    inline asmsub read_flags() -> ubyte @A {
-        %asm {{
-        php
-        pla
-        }}
-    }
-
-    inline asmsub clear_carry() {
-        %asm {{
-        clc
-        }}
-    }
-
-    inline asmsub set_carry() {
-        %asm {{
-        sec
-        }}
-    }
-
-    inline asmsub clear_irqd() {
-        %asm {{
-        cli
-        }}
-    }
-
-    inline asmsub set_irqd() {
-        %asm {{
-        sei
-        }}
-    }
-
-    inline asmsub irqsafe_set_irqd() {
-        %asm {{
-        php
-        sei
-        }}
-    }
-
-    inline asmsub irqsafe_clear_irqd() {
-        %asm {{
-        plp
-        }}
-    }
 
     sub disable_caseswitch() {
         ; no-op
@@ -270,48 +216,6 @@ _longcopy
         ; no-op
     }
 
-    asmsub save_prog8_internals() {
-        %asm {{
-            lda  P8ZP_SCRATCH_B1
-            sta  save_SCRATCH_ZPB1
-            lda  P8ZP_SCRATCH_REG
-            sta  save_SCRATCH_ZPREG
-            lda  P8ZP_SCRATCH_W1
-            sta  save_SCRATCH_ZPWORD1
-            lda  P8ZP_SCRATCH_W1+1
-            sta  save_SCRATCH_ZPWORD1+1
-            lda  P8ZP_SCRATCH_W2
-            sta  save_SCRATCH_ZPWORD2
-            lda  P8ZP_SCRATCH_W2+1
-            sta  save_SCRATCH_ZPWORD2+1
-            rts
-            .section BSS
-save_SCRATCH_ZPB1	.byte  ?
-save_SCRATCH_ZPREG	.byte  ?
-save_SCRATCH_ZPWORD1	.word  ?
-save_SCRATCH_ZPWORD2	.word  ?
-            .send BSS
-            ; !notreached!
-        }}
-    }
-
-    asmsub restore_prog8_internals() {
-        %asm {{
-            lda  save_prog8_internals.save_SCRATCH_ZPB1
-            sta  P8ZP_SCRATCH_B1
-            lda  save_prog8_internals.save_SCRATCH_ZPREG
-            sta  P8ZP_SCRATCH_REG
-            lda  save_prog8_internals.save_SCRATCH_ZPWORD1
-            sta  P8ZP_SCRATCH_W1
-            lda  save_prog8_internals.save_SCRATCH_ZPWORD1+1
-            sta  P8ZP_SCRATCH_W1+1
-            lda  save_prog8_internals.save_SCRATCH_ZPWORD2
-            sta  P8ZP_SCRATCH_W2
-            lda  save_prog8_internals.save_SCRATCH_ZPWORD2+1
-            sta  P8ZP_SCRATCH_W2+1
-            rts
-        }}
-    }
 
     asmsub exit(ubyte returnvalue @A) {
         ; -- immediately exit the program with a return code in the A register
@@ -350,20 +254,6 @@ save_SCRATCH_ZPWORD2	.word  ?
         }}
     }
 
-    inline asmsub progend() -> uword @AY {
-        %asm {{
-            lda  #<prog8_program_end
-            ldy  #>prog8_program_end
-        }}
-    }
-
-    inline asmsub progstart() -> uword @AY {
-        %asm {{
-            lda  #<prog8_program_start
-            ldy  #>prog8_program_start
-        }}
-    }
-
     inline asmsub push_returnaddress(uword address @XY) {
         %asm {{
             ; push like JSR would:  address-1,  MSB first then LSB
@@ -378,6 +268,33 @@ save_SCRATCH_ZPWORD2	.word  ?
         }}
     }
 
+    asmsub get_as_returnaddress(uword address @XY) -> uword @AX {
+        %asm {{
+            ; return the address like JSR would push onto the stack:  address-1,  MSB first then LSB
+            cpx  #0
+            bne  +
+            dey
++           dex
+            tya
+            rts
+        }}
+    }
+
+    sub cpu_is_65816() -> bool {
+        ; Returns true when you have a 65816 cpu, false when it's a 6502.
+        %asm {{
+			php
+			clv
+			.byte $e2, $ea  ; SEP #$ea, should be interpreted as 2 NOPs by 6502. 65c816 will set the Overflow flag.
+			bvc +
+			lda #1
+			plp
+			rts
++			lda #0
+			plp
+			rts
+        }}
+    }
 }
 
 cx16 {
@@ -560,12 +477,6 @@ cx16 {
             rts
         }}
     }
-
-    sub cpu_is_65816() -> bool {
-        ; Returns true when you have a 65816 cpu, false when it's a 6502.
-        return false
-    }
-
 }
 
 p8_sys_startup {
