@@ -118,12 +118,14 @@ sys {
 
     const ubyte target = 4          ;  compilation target specifier.  255=virtual, 128=C128, 64=C64, 32=PET, 25=Foenix F256, 20=plus4, 16=CommanderX16, 8=atari800XL, 7=Neo6502, 6=wdcsxb6, 5=rp6502, 4=Plus/4+C16
 
-    const ubyte SIZEOF_BOOL  = 1
-    const ubyte SIZEOF_BYTE  = 1
-    const ubyte SIZEOF_UBYTE = 1
-    const ubyte SIZEOF_WORD  = 2
-    const ubyte SIZEOF_UWORD = 2
-    const ubyte SIZEOF_FLOAT = 5
+    const ubyte SIZEOF_BOOL  = sizeof(bool)
+    const ubyte SIZEOF_BYTE  = sizeof(byte)
+    const ubyte SIZEOF_UBYTE = sizeof(ubyte)
+    const ubyte SIZEOF_WORD  = sizeof(word)
+    const ubyte SIZEOF_UWORD = sizeof(uword)
+    const ubyte SIZEOF_LONG  = sizeof(long)
+    const ubyte SIZEOF_POINTER = sizeof(&sys.wait)
+    const ubyte SIZEOF_FLOAT = sizeof(float)
     const byte  MIN_BYTE     = -128
     const byte  MAX_BYTE     = 127
     const ubyte MIN_UBYTE    = 0
@@ -142,6 +144,7 @@ sys {
     sub  enable_runstop_and_charsetswitch() {
         p8_sys_startup.enable_runstop_and_charsetswitch()
     }
+
 
 asmsub  set_irq(uword handler @AY) clobbers(A)  {
 	%asm {{
@@ -357,6 +360,7 @@ _larger
         }}
     }
 
+
     inline asmsub disable_caseswitch() {
         %asm {{
             lda  #$80
@@ -408,20 +412,6 @@ _larger
         }}
     }
 
-    inline asmsub push(ubyte value @A) {
-        %asm {{
-            pha
-        }}
-    }
-
-    inline asmsub pushw(uword value @AY) {
-        %asm {{
-            pha
-            tya
-            pha
-        }}
-    }
-
     inline asmsub push_returnaddress(uword address @XY) {
         %asm {{
             ; push like JSR would:  address-1,  MSB first then LSB
@@ -445,46 +435,6 @@ _larger
 +           dex
             tya
             rts
-        }}
-    }
-
-    inline asmsub pop() -> ubyte @A {
-        %asm {{
-            pla
-        }}
-    }
-
-    inline asmsub popw() -> uword @AY {
-        %asm {{
-            pla
-            tay
-            pla
-        }}
-    }
-
-    inline asmsub pushl(long value @R0R1) {
-        %asm {{
-            lda  cx16.r0
-            pha
-            lda  cx16.r0+1
-            pha
-            lda  cx16.r0+2
-            pha
-            lda  cx16.r0+3
-            pha
-        }}
-    }
-
-    inline asmsub popl() -> long @R0R1 {
-        %asm {{
-            pla
-            sta  cx16.r0+3
-            pla
-            sta  cx16.r0+2
-            pla
-            sta  cx16.r0+1
-            pla
-            sta  cx16.r0
         }}
     }
 
@@ -650,7 +600,6 @@ cx16 {
 
 
     asmsub save_virtual_registers() clobbers(A,Y) {
-		; TODO: Romable
         %asm {{
             ldy  #31
     -       lda  cx16.r0,y
@@ -678,12 +627,6 @@ cx16 {
             rts
         }}
     }
-
-    sub cpu_is_65816() -> bool {
-        ; Returns true when you have a 65816 cpu, false when it's a 6502.
-        return false
-    }
-
 }
 
 p8_sys_startup {
