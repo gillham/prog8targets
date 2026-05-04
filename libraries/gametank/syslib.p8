@@ -19,7 +19,7 @@ inline asmsub STOP2() clobbers(X,A) -> bool @Pz  {
     ;    just for convenience because most of the times you're only interested in the stop pressed or not status.
     %asm {{
         ;jsr  cbm.STOP
-        lda  #01
+        lda  #$01
     }}
 }
 
@@ -114,6 +114,8 @@ asmsub kbdbuf_clear() {
 }
 
 gametank {
+%option force_output    ; "cartbank" sub should be asm instead?
+
         ; GameTank hardware registers and state
         ;bool @shared blit_active = false          ; True when blitter is active. Completion IRQ sets false.
         bool @shared blit_active          ; True when blitter is active. Completion IRQ sets false.
@@ -199,6 +201,218 @@ gametank {
         &uword  RESET_VEC       = $FFFC     ; 6502 reset vector, end of cartridge ram
         &uword  IRQ_VEC         = $FFFE     ; 6502 interrupt vector, end of cartridge ram
 
+; ---- utilities -----
+    sub cartbank(ubyte value) {
+        ubyte pins
+        ubyte temp
+
+        ; set data direction pins
+        gametank.VIA1DDRA |= %00000000
+
+        ; clear all pins
+        gametank.VIA1PA1  = %00000000
+
+        pins = value
+        sys.clear_carry()
+        rol(pins)   ; high-bit in carry
+        rol(pins)   ; high-bit in bit 0
+        rol(pins)   ; high-bit in bit 1 (data)
+
+        repeat 8 {
+            ; stash current value
+            temp = pins
+
+            ; mask data pin
+            pins &= %00000010
+            ; write data bit and set clock low
+            gametank.VIA1PA1  = pins
+            ; write data bit and set clock high
+            gametank.VIA1PA1  = pins | %00000001
+
+            ; restore
+            pins = temp
+            rol(pins)
+        }
+            ; set latch
+            gametank.VIA1PA1  = %00000100
+            ; reset latch
+            gametank.VIA1PA1  = %00000000
+    }
+
+; cartridge banks 0-127 reserved for RAM on carts
+; cartridge banks 128-255 are actual ROM cart banks
+; this should be used for all banking of the "ROM"
+; space $8000-$BFFF whether ram or rom cart.
+inline asmsub rombank(ubyte bank @A) {
+    ; -- set the rom banks
+    %asm {{
+        sta  $01        ; cart / rom bank mirror
+        jsr  cartbank   ; switch actual cartridge rom bank
+                        ; cartbank should move here in asm.
+    }}
+}
+
+; should this be general purpose ram only?
+; lower two bits could be asl 6 times to 
+; put in correct spot.
+; asl 6, push a, clear top two bits of mirror
+; store mirror, pull a, and with mirror, store mirror
+; store bank register
+; (since it banks the zero page & stack as well)
+inline asmsub rambank(ubyte bank @A) {
+    ; -- set the ram bank
+    %asm {{
+        asl                 ; shift left 6 times
+        asl
+        asl
+        asl
+        asl
+        asl                 ; bits 0 & 1 now in 6 & 7
+        pha                 ; stash general purpose ram bank
+        lda  #%00111111     ; GP ram bank inverted mask
+        and  $00            ; mask off GP ram bank
+        sta  $00            ; store with GP ram bank cleared
+        pla                 ; restore ram bank bits
+        ora  $00            ; or with ram bank mirror
+        sta  $00            ; finally store ram bank mirror
+        sta  $2005          ; write-only bank register
+    }}
+}
+
+inline asmsub getrombank() -> ubyte @A {
+    ; -- get the current rom bank
+    %asm {{
+        lda  $01            ; return mirror as register is write-only
+    }}
+}
+
+inline asmsub getrambank() -> ubyte @A {
+    ; -- get the current RAM bank
+    %asm {{
+        lda  $00            ; return mirror as register is write-only
+    }}
+}
+
+inline asmsub push_rombank(ubyte newbank @A) clobbers(Y) {
+    ; push the current rombank on the stack and makes the given rom bank active
+    ; combined with pop_rombank() makes for easy temporary rom bank switch
+    %asm {{
+        ldy  $01
+        phy
+        sta  $01            ; should call non-inline cart bank switch
+    }}
+}
+
+inline asmsub pop_rombank() {
+    ; sets the current rom bank back to what was stored previously on the stack
+    %asm {{
+        pla
+        sta  $01            ; should call non-inline cart bank switch
+    }}
+}
+
+inline asmsub push_rambank(ubyte newbank @A) clobbers(Y) {
+    ; push the current hiram bank on the stack and makes the given hiram bank active
+    ; combined with pop_rombank() makes for easy temporary hiram bank switch
+    %asm {{
+        ldy  $00
+        phy
+        sta  $00            ; should call non-inline ram bank switch
+    }}
+}
+
+inline asmsub pop_rambank() {
+    ; sets the current hiram bank back to what was stored previously on the stack
+    %asm {{
+        pla
+        sta  $00            ; should call non-inline ram bank switch
+    }}
+}
+
+inline asmsub numbanks() -> ubyte @A {
+    ; -- Returns the number of available general purpose RAM banks (each bank is 8 Kb).
+    ;    This is always 4 on GameTank.
+    %asm {{
+        lda  #4
+    }}
+}
+
+    ; this works to cartridge ram / rom banks, not GP RAM.
+    ; So $8000-$BFFF.  Banking GP RAM with ZP & stack needs
+    ; much more complex code.
+    asmsub x16jsrfar() {
+        %asm {{
+            ; setup a JSRFAR call (using X16 call convention)
+            sta  P8ZP_SCRATCH_W2        ; save A
+            sty  P8ZP_SCRATCH_W2+1      ; save Y
+            php
+            pla
+            sta  P8ZP_SCRATCH_REG       ; save Status
+
+            pla
+            sta  P8ZP_SCRATCH_W1        ; pull return address
+            pla
+            sta  P8ZP_SCRATCH_W1+1      ; from stack to find args
+
+            ; retrieve arguments
+            ldy  #$01
+            lda  (P8ZP_SCRATCH_W1),y            ; grab low byte of target address
+            sta  _jmpfar_vec
+            iny
+            lda  (P8ZP_SCRATCH_W1),y            ; now the high byte
+            sta  _jmpfar_vec+1
+            iny
+            lda  (P8ZP_SCRATCH_W1),y            ; then the target bank
+            sta  P8ZP_SCRATCH_B1
+
+            ; adjust return address to skip over the arguments
+            clc
+            lda  P8ZP_SCRATCH_W1
+            adc  #3
+            sta  P8ZP_SCRATCH_W1
+            lda  P8ZP_SCRATCH_W1+1
+            adc  #0
+            pha
+            lda  P8ZP_SCRATCH_W1
+            pha
+            lda  $01                            ; save old cart ram / rom bank
+            pha
+            ; set target bank, restore A, Y and flags
+            lda  P8ZP_SCRATCH_REG
+            pha
+            lda  P8ZP_SCRATCH_B1
+            sta  $01                    ; save to bankreg mirror
+            phx                         ; save X also
+            jsr  cartbank
+            plx                         ; restore after sub call
+            lda  P8ZP_SCRATCH_W2
+            ldy  P8ZP_SCRATCH_W2+1
+            plp
+            jsr  _jsrfar        ; do the actual call
+            ; restore bank without clobbering status flags and A register
+            sta  P8ZP_SCRATCH_W1
+            php
+            pla
+            sta  P8ZP_SCRATCH_B1
+            pla
+            sta  $01                    ; save to bankreg mirror
+            phx                         ; save X also
+            jsr  cartbank
+            plx                         ; restore after sub call
+            lda  P8ZP_SCRATCH_B1
+            pha
+            lda  P8ZP_SCRATCH_W1
+            plp
+            rts
+_jsrfar     jmp  (_jmpfar_vec)
+
+            .section BSS
+_jmpfar_vec .word ?
+            .send BSS
+
+            ; !notreached!
+        }}
+    }
 }
 
 %import shared_sys_functions
@@ -690,7 +904,6 @@ cx16 {
 
 
     asmsub save_virtual_registers() clobbers(A,Y) {
-		; TODO: Romable
         %asm {{
             ldy  #31
     -       lda  cx16.r0,y

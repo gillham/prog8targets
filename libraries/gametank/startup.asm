@@ -2,8 +2,16 @@
 ; --- GameTank startup ---
 ;
 
+; Allow a compiler defined symbol to override vector address.
+; This allows building modules for cartridge banks.
+.weak
+is_library = 0
+.endweak
+
 ; Place vectors at end of cartridge rom
+.if is_library==0
 *=$fffa
+.endif
 .dsection rom_vectors
 
 ;
@@ -12,6 +20,10 @@
 ; 16KB banked ROM. ($8000-$bfff)
 ;
 *=prog8_program_start       ; allow %address to override
+.if is_library==1
+    jmp  p8b_main.p8s_start
+.endif
+.if is_library==0
     sei
     stz  gametank.BANKREG   ; set all ram banks to 0 (low ram/stack!!)
 
@@ -30,6 +42,8 @@
     jsr  p8_sys_startup.init_system_phase2
     jsr  p8b_main.p8s_start
     jmp  p8_sys_startup.cleanup_at_exit
+.endif
+
 
 ;
 ; end of custom launcher / startup
