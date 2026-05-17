@@ -142,7 +142,7 @@ asmsub  clear_screencolors (ubyte color @ A) clobbers(Y)  {
 }
 
 
-ubyte[16] color_to_charcode = [$90,$05,$1c,$9f,$9c,$1e,$1f,$9e,$81,$95,$96,$98,$97,$99,$9a,$9b]
+ubyte[16] color_to_charcode = [$90,$05,$1c,$9f,$9c,$1e,$1f,$9e,$81,$95,$96,$97,$98,$99,$9a,$9b]
 
 sub color (ubyte txtcol) {
     txtcol &= 15
