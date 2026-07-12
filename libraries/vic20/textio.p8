@@ -4,7 +4,7 @@
 
 %import syslib
 %import conv
-%import shared_cbm_textio_functions2
+%import shared_cbm_textio_functions
 
 txt {
 

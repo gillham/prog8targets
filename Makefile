@@ -15,17 +15,18 @@ else
     MD = mkdir -p
 endif
 
-PCC=prog8c -srcdirs src -asmlist -out build
-PCCARGSF256=-target config/f256.properties
-PCCARGSRP6502=-target config/rp6502.properties
-PCCARGSSXB6=-target config/w65c816sxb.properties
-PCCARGSVIC20=-target config/vic20.properties
-PCCARGSVIC20P3=-target config/vic20plus3.properties
-PCCARGSVIC20P8=-target config/vic20plus8.properties
-PCCARGSCX16OS=-target config/cx16os.properties
-PCCARGSPLUS4=-target config/plus4.properties
-PCCARGSMEGA65=-target config/mega65.properties
-PCCARGSGTRC=-target config/gametank.properties -varsgolden -slabsgolden
+PCC=prog8c
+PCCARGS=-srcdirs src -asmlist -out build
+PCCARGSF256=$(PCCARGS) -target config/f256.properties
+PCCARGSRP6502=$(PCCARGS) -target config/rp6502.properties
+PCCARGSSXB6=$(PCCARGS) -target config/w65c816sxb.properties
+PCCARGSVIC20=$(PCCARGS) -target config/vic20.properties
+PCCARGSVIC20P3=$(PCCARGS) -target config/vic20plus3.properties
+PCCARGSVIC20P8=$(PCCARGS) -target config/vic20plus8.properties
+PCCARGSCX16OS=$(PCCARGS) -target config/cx16os.properties
+PCCARGSPLUS4=$(PCCARGS) -target config/plus4.properties
+PCCARGSMEGA65=$(PCCARGS) -target config/mega65.properties
+PCCARGSGTRC=$(PCCARGS) -target config/gametank.properties -varsgolden -slabsgolden
 
 PROGS	= build/hello_f256.pgz build/hello.rp6502 build/hello_sxb6.bin \
 	  build/hello_vic20.prg build/hello_vic20plus3.prg build/hello_vic20plus8.prg \
