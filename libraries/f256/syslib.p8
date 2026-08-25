@@ -431,6 +431,8 @@ _rows       .word  f256.Screen + range(0, 4800, 40)
     ;%asminclude "api.asm"
 }
 
+%import shared_sys_functions
+
 sys {
     ; ------- lowlevel system routines --------
 
@@ -442,7 +444,7 @@ sys {
     const ubyte SIZEOF_WORD  = sizeof(word)
     const ubyte SIZEOF_UWORD = sizeof(uword)
     const ubyte SIZEOF_LONG  = sizeof(long)
-;    const ubyte SIZEOF_POINTER = sizeof(&sys.wait)
+    const ubyte SIZEOF_POINTER = sizeof(&sys.wait)
     const ubyte SIZEOF_FLOAT = 0    ; undefined, no floats supported
     const byte  MIN_BYTE     = -128
     const byte  MAX_BYTE     = 127
@@ -489,175 +491,12 @@ sys {
         }}
     }
 
-    asmsub memcopy(uword source @R0, uword target @R1, uword count @AY) clobbers(A,X,Y) {
-        ; note: only works for NON-OVERLAPPING memory regions!
-        ; note: can't be inlined because is called from asm as well
-        %asm {{
-            ldx  cx16.r0
-            stx  P8ZP_SCRATCH_W1        ; source in ZP
-            ldx  cx16.r0+1
-            stx  P8ZP_SCRATCH_W1+1
-            ldx  cx16.r1
-            stx  P8ZP_SCRATCH_W2        ; target in ZP
-            ldx  cx16.r1+1
-            stx  P8ZP_SCRATCH_W2+1
-            cpy  #0
-            bne  _longcopy
-
-            ; copy <= 255 bytes
-            tay
-            bne  _copyshort
-            rts     ; nothing to copy
-
-_copyshort
-            dey
-            beq  +
--           lda  (P8ZP_SCRATCH_W1),y
-            sta  (P8ZP_SCRATCH_W2),y
-            dey
-            bne  -
-+           lda  (P8ZP_SCRATCH_W1),y
-            sta  (P8ZP_SCRATCH_W2),y
-            rts
-
-_longcopy
-            sta  P8ZP_SCRATCH_B1        ; lsb(count) = remainder in last page
-            tya
-            tax                         ; x = num pages (1+)
-            ldy  #0
--           lda  (P8ZP_SCRATCH_W1),y
-            sta  (P8ZP_SCRATCH_W2),y
-            iny
-            bne  -
-            inc  P8ZP_SCRATCH_W1+1
-            inc  P8ZP_SCRATCH_W2+1
-            dex
-            bne  -
-            ldy  P8ZP_SCRATCH_B1
-            bne  _copyshort
-            rts
-        }}
-    }
-
-    asmsub memset(uword mem @R0, uword numbytes @R1, ubyte value @A) clobbers(A,X,Y) {
-        %asm {{
-            ldy  cx16.r0
-            sty  P8ZP_SCRATCH_W1
-            ldy  cx16.r0+1
-            sty  P8ZP_SCRATCH_W1+1
-            ldx  cx16.r1
-            ldy  cx16.r1+1
-            jmp  prog8_lib.memset
-        }}
-    }
-
-    asmsub memsetw(uword mem @R0, uword numwords @R1, uword value @AY) clobbers(A,X,Y) {
-        %asm {{
-            ldx  cx16.r0
-            stx  P8ZP_SCRATCH_W1
-            ldx  cx16.r0+1
-            stx  P8ZP_SCRATCH_W1+1
-            ldx  cx16.r1
-            stx  P8ZP_SCRATCH_W2
-            ldx  cx16.r1+1
-            stx  P8ZP_SCRATCH_W2+1
-            jmp  prog8_lib.memsetw
-        }}
-    }
-
-    inline asmsub read_flags() -> ubyte @A {
-        %asm {{
-        php
-        pla
-        }}
-    }
-
-    inline asmsub clear_carry() {
-        %asm {{
-        clc
-        }}
-    }
-
-    inline asmsub set_carry() {
-        %asm {{
-        sec
-        }}
-    }
-
-    inline asmsub clear_irqd() {
-        %asm {{
-        cli
-        }}
-    }
-
-    inline asmsub set_irqd() {
-        %asm {{
-        sei
-        }}
-    }
-
-    inline asmsub irqsafe_set_irqd() {
-        %asm {{
-        php
-        sei
-        }}
-    }
-
-    inline asmsub irqsafe_clear_irqd() {
-        %asm {{
-        plp
-        }}
-    }
-
     sub disable_caseswitch() {
         ; no-op
     }
 
     sub enable_caseswitch() {
         ; no-op
-    }
-
-    asmsub save_prog8_internals() {
-        %asm {{
-            lda  P8ZP_SCRATCH_B1
-            sta  save_SCRATCH_ZPB1
-            lda  P8ZP_SCRATCH_REG
-            sta  save_SCRATCH_ZPREG
-            lda  P8ZP_SCRATCH_W1
-            sta  save_SCRATCH_ZPWORD1
-            lda  P8ZP_SCRATCH_W1+1
-            sta  save_SCRATCH_ZPWORD1+1
-            lda  P8ZP_SCRATCH_W2
-            sta  save_SCRATCH_ZPWORD2
-            lda  P8ZP_SCRATCH_W2+1
-            sta  save_SCRATCH_ZPWORD2+1
-            rts
-            .section BSS
-save_SCRATCH_ZPB1	.byte  ?
-save_SCRATCH_ZPREG	.byte  ?
-save_SCRATCH_ZPWORD1	.word  ?
-save_SCRATCH_ZPWORD2	.word  ?
-            .send BSS
-            ; !notreached!
-        }}
-    }
-
-    asmsub restore_prog8_internals() {
-        %asm {{
-            lda  save_prog8_internals.save_SCRATCH_ZPB1
-            sta  P8ZP_SCRATCH_B1
-            lda  save_prog8_internals.save_SCRATCH_ZPREG
-            sta  P8ZP_SCRATCH_REG
-            lda  save_prog8_internals.save_SCRATCH_ZPWORD1
-            sta  P8ZP_SCRATCH_W1
-            lda  save_prog8_internals.save_SCRATCH_ZPWORD1+1
-            sta  P8ZP_SCRATCH_W1+1
-            lda  save_prog8_internals.save_SCRATCH_ZPWORD2
-            sta  P8ZP_SCRATCH_W2
-            lda  save_prog8_internals.save_SCRATCH_ZPWORD2+1
-            sta  P8ZP_SCRATCH_W2+1
-            rts
-        }}
     }
 
     asmsub exit(ubyte returnvalue @A) {
@@ -694,20 +533,6 @@ save_SCRATCH_ZPWORD2	.word  ?
             ldx  prog8_lib.orig_stackpointer
             txs
             jmp  p8_sys_startup.cleanup_at_exit
-        }}
-    }
-
-    inline asmsub progend() -> uword @AY {
-        %asm {{
-            lda  #<prog8_program_end
-            ldy  #>prog8_program_end
-        }}
-    }
-
-    inline asmsub progstart() -> uword @AY {
-        %asm {{
-            lda  #<prog8_program_start
-            ldy  #>prog8_program_start
         }}
     }
 

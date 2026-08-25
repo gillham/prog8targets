@@ -181,29 +181,56 @@ asmsub  scroll_down  (bool alsocolors @ Pc) clobbers(A)  {
 
 asmsub chrout(ubyte char @A) {
         %asm {{
+_charptr = cx16.r14
+_colorptr = cx16.r15
             phy
             phx
             pha
             ; check for linefeed
             cmp  #$0d       ; linefeed
             beq  _crlf
-            ; maybe pass these in registers?
-            ldx txt.vcol
-            stx txt.tcol
-            ldx txt.vrow
-            stx txt.trow
-            ldx txt.vcolor
-            stx txt.tcolor
-            ldx txt.bcolor
-            stx txt.icolor
+            ; update virtual screen / color ram
+            ldx txt.bcolor      ; load current background color
+            stx txt.icolor      ; store to fb inverse/background color
+            pha
+            lda txt.vrow
+            sta txt.trow
+            asl a
             tay
+            lda  setchr._screenrows,y
+            sta  _charptr
+            sta  _colorptr
+            lda  setchr._screenrows+1,y
+            sta  _charptr+1
+            clc
+            adc  #$02
+            sta  _colorptr+1
+            ; two pointers are ready
+            ; ... calculate color
+            ; ... turn on high bit of character if inverse mode?
+            ; ... put character in destination
+            ldy txt.vcol        ; load curent text column
+            sty txt.tcol        ; store to fb draw column
+            lda txt.vcolor      ; load current text color
+            sta txt.tcolor      ; store to fb draw color
+            sta (_colorptr),y   ; store to color ram
+            pla                 ; restore a
+            sta (_charptr), y
+            ; after update text screen/color ram
+            tax                 ; stash a briefly
             lda txt.inverse_mode
             beq +
-            ldx txt.vcolor      ; load normal text color
-            stx txt.icolor      ; save to inverse/background
-            ldx txt.bcolor      ; load background
-            stx txt.tcolor      ; save to normal text color
-+           tya                 ; restore A
+            ; inverse (_charptr),y here by setting high bit
+            ; maybe should toggle the high bit, but...
+            ;lda (_charptr), y   ; load character from screen ram
+            ;and #128            ; turn on high-bit to signal inverse
+            ;sta (_charptr), y   ; store it back
+            ; end of should inverse
+            lda txt.vcolor      ; load normal text color
+            sta txt.icolor      ; save to inverse/background
+            lda txt.bcolor      ; load background
+            sta txt.tcolor      ; save to normal text color
++           txa                 ; restore A
             jsr chrout_fb
             ; fix up vcol/vrow
             inc  vcol       ; increment vcol now that we have drawn
@@ -615,6 +642,8 @@ asmsub  getchr  (ubyte col @A, ubyte row @Y) clobbers(Y) -> ubyte @ A {
 asmsub  setclr  (ubyte col @X, ubyte row @Y, ubyte color @A) clobbers(A, Y)  {
 	; ---- set the color in A on the screen matrix at the given position
 	%asm {{
+                stx  txt.tcol
+                sty  txt.trow
 		pha
 		tya
 		asl  a
@@ -627,7 +656,20 @@ asmsub  setclr  (ubyte col @X, ubyte row @Y, ubyte color @A) clobbers(A, Y)  {
 		tay
 		pla
 		sta  (P8ZP_SCRATCH_W1),y
-		rts
+                sta  txt.tcolor
+                ldx  txt.bcolor
+                stx  txt.icolor
+                ; now get char at this row/col
+                lda  txt.trow
+                asl  a
+                tay
+                lda  setchr._screenrows,y
+                sta  P8ZP_SCRATCH_W1
+                lda  setchr._screenrows+1,y
+                sta  P8ZP_SCRATCH_W1+1
+                ldy  txt.tcol
+                lda  (P8ZP_SCRATCH_W1),y
+		jmp  chrout_fb
 
 _colorrows	.word  gametank.Color + range(0, DEFAULT_HEIGHT*DEFAULT_WIDTH, DEFAULT_WIDTH)
         ; !notreached!
