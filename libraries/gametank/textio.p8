@@ -405,6 +405,13 @@ asmsub  print (str text @ AY) clobbers(A,Y)  {
 	}}
 }
 
+    sub print_bool(bool value) {
+        if value
+            txt.print("true")
+        else
+            txt.print("false")
+    }
+
 asmsub  print_ub0  (ubyte value @ A) clobbers(A,X,Y)  {
 	; ---- print the ubyte in A in decimal form, with left padding 0s (3 positions total)
 	%asm {{
