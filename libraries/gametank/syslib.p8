@@ -1081,6 +1081,10 @@ asmsub  init_system_phase2()  {
         lda  #0
         jsr  sys.memset
 
+        ; set cartridge to bank 0
+        lda  #0
+        sta  $01
+        jsr  gametank.cartbank   ; should be jmp
         rts
     }}
 }
