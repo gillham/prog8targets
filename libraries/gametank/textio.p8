@@ -165,7 +165,88 @@ asmsub  scroll_up  (bool alsocolors @ Pc) clobbers(A)  {
 	;      Carry flag determines if screen color data must be scrolled too
 	; TODO
 	%asm {{
+            phy
+            phx
+            pha
+            ; copy text memory
+            lda  #<(gametank.Screen+24) ; source is row 1 not 0 (moving screen up one)
+            sta  cx16.r0L
+            lda  #>(gametank.Screen+24)
+            sta  cx16.r0H
+            lda  #<gametank.Screen      ; destination is row 0
+            sta  cx16.r1L
+            lda  #>gametank.Screen
+            sta  cx16.r1H
+            lda  #$c8                   ; 456 = $01c8
+            ldy  #$01                   ; 24 cols & 19 rows
+            jsr  sys.memcopy
+            ; copy color memory
+            lda  #<(gametank.Color+24) ; source is row 1 not 0 (moving colors up one)
+            sta  cx16.r0L
+            lda  #>(gametank.Color+24)
+            sta  cx16.r0H
+            lda  #<gametank.Color      ; destination is row 0
+            sta  cx16.r1L
+            lda  #>gametank.Color
+            sta  cx16.r1H
+            lda  #$c8                   ; 456 = $01c8
+            ldy  #$01                   ; 24 cols & 19 rows
+            jsr  sys.memcopy
+            ; copy framebuffer memory
+            lda  #<(gametank.SCREENRAM+1280) ; source is pixel row 10 (4 unused + 1 row x6)
+            sta  cx16.r0L
+            lda  #>(gametank.SCREENRAM+1280)
+            sta  cx16.r0H
+            lda  #<(gametank.SCREENRAM+512)  ; destination is pixel row 5
+            sta  cx16.r1L
+            lda  #>(gametank.SCREENRAM+512)
+            sta  cx16.r1H
+            lda  #$00                   ; 14592 = $3900
+            ldy  #$39                   ; 128 pixel rows * 19 rows * 6 rows per character
+            jsr  sys.memcopy
+            ; clear bottom row of screen memory
+            lda  #<(gametank.Screen+456) ; memory location to set
+            sta  cx16.r0L
+            lda  #>(gametank.Screen+456)
+            sta  cx16.r0H
+            lda  #<(12)  ; number of words to set
+            sta  cx16.r1L
+            lda  #>(12)
+            sta  cx16.r1H
+            lda  #$20                   ; set to space $20
+            ldy  #$20                   ; set to space $20
+            jsr  sys.memsetw
+            ; clear bottom row of color memory
+            lda  #<(gametank.Color+456) ; memory location to set
+            sta  cx16.r0L
+            lda  #>(gametank.Color+456)
+            sta  cx16.r0H
+            lda  #<(12)  ; number of words to set
+            sta  cx16.r1L
+            lda  #>(12)
+            sta  cx16.r1H
+            lda  txt.vcolor             ; set to current text color
+            ldy  txt.vcolor             ; set to current text color 
+            jsr  sys.memsetw
+            ; clear bottom row of frame buffer
+            lda  #<(gametank.SCREENRAM+15104) ; memory location to set
+            sta  cx16.r0L
+            lda  #>(gametank.SCREENRAM+15104)
+            sta  cx16.r0H
+            lda  #<(384)  ; number of words to set
+            sta  cx16.r1L
+            lda  #>(384)
+            sta  cx16.r1H
+            lda  #$00                   ; set to black $00
+            ldy  #$00                   ; set to black $00
+            jsr  sys.memsetw
+
+            pla
+            plx
+            ply
 	    rts
+_copy:
+            rts
         }}
 }
 
@@ -245,7 +326,8 @@ _crlf:      inc  vrow       ; new vrow
             bcc  +          ; less than 20 we are done
             lda  #19        ; should scroll but just stop at bottom
             sta  vrow
-
+            sec             ; indicate we want to scroll color mem also
+            jsr  scroll_up  ; scroll text/color/screen
 +           pla
             plx
             ply
