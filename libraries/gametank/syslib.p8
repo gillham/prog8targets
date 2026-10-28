@@ -202,7 +202,7 @@ gametank {
         &uword  IRQ_VEC         = $FFFE     ; 6502 interrupt vector, end of cartridge ram
 
 ; ---- utilities -----
-    sub cartbank(ubyte value) {
+    sub xcartbank(ubyte value) {
         ubyte pins
         ubyte temp
 
@@ -1030,9 +1030,16 @@ _vnmi:
 
     ; This creates 6502 vectors at the end of ROM space.
     ; The section is defined in the target .properties file.
+    ; We use prog8_program_entry (vs prog8_program_start) because
+    ; we need to guarantee that prog8_program_entry is in the upper
+    ; 16KB fixed ROM.  With `%address $8000` for example we will
+    ; end up with prog8_program_start at $8000 in the cartridge banked
+    ; rom area and it might not be on the correct bank at startup.
+    ; So prog8_program_entry is used at it almost immediately sets the
+    ; cart bank to 128 before `jmp prog8_program_start`
     .section rom_vectors
         .addr p8_sys_startup.init_system._vnmi
-        .addr prog8_program_start
+        .addr prog8_program_entry
         .addr p8_sys_startup.init_system._irq
     .send
         ; !notreached!
@@ -1084,7 +1091,7 @@ asmsub  init_system_phase2()  {
         ; set cartridge to bank 128 (first *ROM* bank)
         lda  #$80
         sta  $01
-        jsr  gametank.cartbank   ; should be jmp
+        jsr  cartbank   ; should be jmp
         rts
     }}
 }
