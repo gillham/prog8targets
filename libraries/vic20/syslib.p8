@@ -1028,6 +1028,8 @@ asmsub  init_system()  {
         lda #%01101011      ; cyan border, blue background, not inverted
         sta $900f           ; set colors
         cli
+        lda  #$80
+        sta  650    ; enable key repeat for normal keys too
         rts
     }}
 }
@@ -1054,7 +1056,9 @@ asmsub  cleanup_at_exit() {
 ;        jsr  cbm.MEMTOP     ; adjust MEMTOP down again
         jsr  cbm.CLRCHN		; reset i/o channels
         jsr  enable_runstop_and_charsetswitch
-        
+        lda  #0
+        sta  650    ; disable keyrepeats
+
 _exitcodeCarry = *+1
         lda  #0
         lsr  a
