@@ -469,6 +469,13 @@ sys {
     sub wait(uword jiffies) {
         ; --- wait approximately the given number of jiffies (1/60th seconds)
         ;     TODO
+        uword busy
+        ubyte tbusy
+        repeat jiffies {
+            for busy in 0 to 7000 {
+                tbusy++
+            }
+        }
     }
 
     asmsub waitvsync() clobbers(A) {
