@@ -84,7 +84,7 @@ extsub $FFB7 = READST() -> ubyte @ A                            ; read I/O statu
 extsub $FFBA = SETLFS(ubyte logical @ A, ubyte device @ X, ubyte secondary @ Y)   ; set logical file parameters
 extsub $FFBD = SETNAM(ubyte namelen @ A, str filename @ XY)     ; set filename parameters
 extsub $FFC0 = OPEN() clobbers(X,Y) -> bool @Pc, ubyte @A      ; (via 794 ($31A)) open a logical file
-extsub $FFC3 = CLOSE(ubyte logical @ A) clobbers(A,X,Y)         ; (via 796 ($31C)) close a logical file
+;extsub $FFC3 = CLOSE(ubyte logical @ A) clobbers(A,X,Y)         ; (via 796 ($31C)) close a logical file
 extsub $FFC6 = CHKIN(ubyte logical @ X) clobbers(A,X) -> bool @Pc    ; (via 798 ($31E)) define an input channel
 extsub $FFC9 = CHKOUT(ubyte logical @ X) clobbers(A,X)          ; (via 800 ($320)) define an output channel
 extsub $FFCC = CLRCHN() clobbers(A,X)                           ; (via 802 ($322)) restore default devices
@@ -102,6 +102,15 @@ extsub $FFED = SCREEN() -> ubyte @ X, ubyte @ Y                 ; get size of te
 extsub $FFF0 = PLOT(ubyte col @ Y, ubyte row @ X, bool dir @ Pc) clobbers(A) -> ubyte @ Y, ubyte @ X       ; read/set position of cursor on screen (Y=column, X=row).  Also see txt.plot
 extsub $FFF3 = IOBASE() -> uword @ XY                           ; read base address of I/O devices
 
+;
+; Carry must be clear to actually close the file.
+;
+asmsub CLOSE(ubyte logical @A) clobbers(A,X,Y) {
+    %asm {{
+        clc
+        jmp  $ffc3
+    }}
+}
 
 inline asmsub STOP2() clobbers(X,A) -> bool @Pz  {
     ; -- just like STOP, but omits the special keys result value in A.
